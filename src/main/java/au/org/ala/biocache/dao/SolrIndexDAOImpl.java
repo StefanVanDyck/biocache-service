@@ -43,6 +43,8 @@ import org.gbif.dwc.terms.Term;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractMessageSource;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -185,6 +187,9 @@ public class SolrIndexDAOImpl implements IndexDAO {
     @Value("${solr.home:}")
     protected String solrHome;
 
+    @Value("${rbac.enabled:false}")
+    private boolean rbacEnabled;
+
     // CoreContainer cc;
     SolrClient solrClient;
     CloseableHttpClient httpClient;
@@ -299,6 +304,10 @@ public class SolrIndexDAOImpl implements IndexDAO {
     @Override
     public QueryResponse query(SolrParams query) throws Exception {
         int retry = 0;
+
+        if (rbacEnabled) {
+            query = addRbacFilter(query);
+        }
 
         QueryResponse qr = null;
         while (retry < maxRetries && qr == null) {
@@ -1330,5 +1339,25 @@ public class SolrIndexDAOImpl implements IndexDAO {
 
     private String escapeDoubleQuote(String input) {
         return input.replaceAll("\"", "\\\\\"");
+    }
+
+    private SolrParams addRbacFilter(SolrParams query) {
+        var newParams = new ModifiableSolrParams(query);
+
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        var roles = "";
+        if (auth != null) {
+            roles = auth.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .collect(Collectors.joining(" "));
+        }
+
+        newParams.add("fq",
+                "(*:* NOT rbac:*) " +
+                        "OR (rbac:true AND rbac_allowed:(" + roles + ")) " +
+                        "OR (rbac:false AND !rbac_allowed:(" + roles + "))"
+        );
+
+        return newParams;
     }
 }
