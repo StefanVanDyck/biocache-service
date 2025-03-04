@@ -190,6 +190,9 @@ public class SolrIndexDAOImpl implements IndexDAO {
     @Value("${rbac.enabled:false}")
     private boolean rbacEnabled;
 
+    @Value("${rbac.rolePrefix:}")
+    private String rolePrefix;
+
     // CoreContainer cc;
     SolrClient solrClient;
     CloseableHttpClient httpClient;
@@ -1353,6 +1356,7 @@ public class SolrIndexDAOImpl implements IndexDAO {
         if (auth != null) {
             roles = auth.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
+                    .filter(role -> role.startsWith(rolePrefix))
                     .collect(Collectors.joining(" "));
         }
 
