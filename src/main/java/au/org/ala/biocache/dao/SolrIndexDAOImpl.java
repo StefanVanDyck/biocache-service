@@ -1236,6 +1236,10 @@ public class SolrIndexDAOImpl implements IndexDAO {
         }
         solrParams.set("qt", qt);
 
+        if (rbacEnabled) {
+            return addRbacFilter(solrParams);
+        }
+
         return solrParams;
     }
 
@@ -1341,7 +1345,7 @@ public class SolrIndexDAOImpl implements IndexDAO {
         return input.replaceAll("\"", "\\\\\"");
     }
 
-    private SolrParams addRbacFilter(SolrParams query) {
+    private ModifiableSolrParams addRbacFilter(SolrParams query) {
         var newParams = new ModifiableSolrParams(query);
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
