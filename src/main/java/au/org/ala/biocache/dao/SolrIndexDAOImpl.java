@@ -1360,16 +1360,16 @@ public class SolrIndexDAOImpl implements IndexDAO {
                     .collect(Collectors.joining(" "));
             if (!roles.isEmpty()) {
                 newParams.add("fq",
-                        "(*:* NOT rbac:*) " +
-                                "OR (rbac:true AND rbac_allowed:(" + roles + ")) " +
-                                "OR (rbac:false AND !rbac_allowed:(" + roles + "))"
+                        "(*:* NOT dynamicProperties_rbac:*) " +
+                                "OR (dynamicProperties_rbac:true AND dynamicProperties_rbac_allowed:(" + roles + ")) " +
+                                "OR (dynamicProperties_rbac:false AND !dynamicProperties_rbac_allowed:(" + roles + "))"
                 );
                 return newParams;
             }
         }
 
         newParams.add("fq",
-                "(*:* NOT rbac:*) OR rbac:false"
+                "(*:* NOT dynamicProperties_rbac:*) OR dynamicProperties_rbac:false"
         );
 
         return newParams;
