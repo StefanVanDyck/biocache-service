@@ -1358,12 +1358,18 @@ public class SolrIndexDAOImpl implements IndexDAO {
                     .map(GrantedAuthority::getAuthority)
                     .filter(role -> role.startsWith(rolePrefix))
                     .collect(Collectors.joining(" "));
+            if (!roles.isEmpty()) {
+                newParams.add("fq",
+                        "(*:* NOT rbac:*) " +
+                                "OR (rbac:true AND rbac_allowed:(" + roles + ")) " +
+                                "OR (rbac:false AND !rbac_allowed:(" + roles + "))"
+                );
+                return newParams;
+            }
         }
 
         newParams.add("fq",
-                "(*:* NOT rbac:*) " +
-                        "OR (rbac:true AND rbac_allowed:(" + roles + ")) " +
-                        "OR (rbac:false AND !rbac_allowed:(" + roles + "))"
+                "(*:* NOT rbac:*) OR rbac:false"
         );
 
         return newParams;
