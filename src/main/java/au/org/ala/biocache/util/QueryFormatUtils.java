@@ -18,6 +18,8 @@ import org.springframework.context.support.AbstractMessageSource;
 import org.springframework.stereotype.Component;
 
 import javax.inject.Inject;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.regex.MatchResult;
@@ -158,6 +160,7 @@ public class QueryFormatUtils {
             if (searchParams.getFq() != null) {
                 for (int i = 0; i < searchParams.getFq().length; i++) {
                     String fq = searchParams.getFq()[i];
+                    fq = URLDecoder.decode(fq, StandardCharsets.UTF_8);
                     String fqOriginal = (originalFqs.length > i) ? originalFqs[i] : fq; // not altered by `applyFilterTagging()`
 
                     if (fq != null && !fq.isEmpty()) {
@@ -178,7 +181,11 @@ public class QueryFormatUtils {
                                 facet.setName(fv[0]);
                                 facet.setValue(fqOriginal.substring(fv[0].length() + 1));
                             }
-                            activeFacetMap.put(facet.getName(), facet);
+                            if (facet.getName() != null)  {
+                                activeFacetMap.put(facet.getName(), facet);
+                            } else {
+                                logger.error("Unable to parse facet name from fq, ignoring: " + fq);
+                            }
 
                             // activeFacetMap is based on the assumption that each fq is on different filter so its a [StringKey: Facet] structure
                             // but actually different fqs can use same filter key for example &fq=-month:'11'&fq=-month='12' so we added a new map
