@@ -1357,6 +1357,7 @@ public class SolrIndexDAOImpl implements IndexDAO {
             roles = auth.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .filter(role -> role.startsWith(rolePrefix))
+                    .map(role -> role.substring(rolePrefix.length()))
                     .collect(Collectors.joining(" "));
             if (!roles.isEmpty()) {
                 newParams.add("fq",
