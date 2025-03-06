@@ -160,7 +160,6 @@ public class QueryFormatUtils {
             if (searchParams.getFq() != null) {
                 for (int i = 0; i < searchParams.getFq().length; i++) {
                     String fq = searchParams.getFq()[i];
-                    fq = URLDecoder.decode(fq, StandardCharsets.UTF_8);
                     String fqOriginal = (originalFqs.length > i) ? originalFqs[i] : fq; // not altered by `applyFilterTagging()`
 
                     if (fq != null && !fq.isEmpty()) {
