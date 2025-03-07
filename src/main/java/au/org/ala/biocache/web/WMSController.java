@@ -28,8 +28,10 @@ import com.google.common.base.Strings;
 import io.swagger.annotations.*;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.solr.client.solrj.response.FacetField;
@@ -45,7 +47,10 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.CoordinateOperation;
 import org.opengis.referencing.operation.TransformException;
 import org.springdoc.api.annotations.ParameterObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.stereotype.Controller;
@@ -53,6 +58,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
+import javax.annotation.PostConstruct;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.servlet.ServletOutputStream;
@@ -61,10 +67,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.awt.*;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -111,7 +114,7 @@ public class WMSController extends AbstractSecureController {
     /**
      * Load a smaller 256x256 png than java.image produces
      */
-    final static byte[] blankImageBytes;
+    static byte[] blankImageBytes;
 
     @Value("${webservices.root:https://biocache-ws.ala.org.au/ws}")
     protected String  baseWsUrl;
@@ -213,21 +216,24 @@ public class WMSController extends AbstractSecureController {
     @Inject
     protected WMSOSGridController wmsosGridController;
 
-    static {
+    @Autowired
+    private ResourceLoader resourceLoader;
+
+    @PostConstruct
+    public void init() throws Exception {
         // cache blank image bytes
-        byte[] b = null;
-        try (RandomAccessFile raf = new RandomAccessFile(WMSController.class.getResource("/blank.png").getFile(), "r");) {
-            b = new byte[(int) raf.length()];
-            raf.read(b);
-        } catch (Exception e) {
-            logger.error("Unable to open blank image file", e);
+        Resource resource = resourceLoader.getResource("classpath:/blank.png");
+        if (!resource.exists()) {
+            throw new IOException("Resource not found: classpath:/blank.png");
         }
-        blankImageBytes = b;
+        try (InputStream is = resource.getInputStream()) {
+            ByteArrayInputStream bais = new ByteArrayInputStream(IOUtils.toByteArray(is));
+            blankImageBytes = bais.readAllBytes();
+        }
 
         // configure geotools to use x/y order for SRS operations
         System.setProperty("org.geotools.referencing.forceXY", "true");
     }
-
 
     @Operation(summary = "Create a query ID", tags = "Query ID", description = "Add query details to a cache to reduce the size of the query params that are being passed around. This is particularly useful if you requests are too large for a GET.\n" +
             "\n" +
@@ -239,6 +245,7 @@ public class WMSController extends AbstractSecureController {
     public void storeParams(@ParameterObject SpatialSearchRequestParams params,
                             @RequestParam(value = "bbox", required = false, defaultValue = "false") String bbox,
                             @RequestParam(value = "title", required = false) String title,
+                            @Parameter(description = "Lifetime of the QID in milliseconds. After expiry the QID is deleted and requests using it fail with HTTP 400. -1 (default) = never expires.", example = "-1")
                             @RequestParam(value = "maxage", required = false, defaultValue = "-1") Long maxage,
                             @RequestParam(value = "source", required = false) String source,
                             HttpServletResponse response) throws Exception {
@@ -1535,6 +1542,7 @@ public class WMSController extends AbstractSecureController {
 
             // faster method
             HeatmapDTO heatmapDTO = searchDAO.getHeatMap(requestParams.getFormattedQuery(), requestParams.getFormattedFq(), bbox[0] - bWidth, bbox[1] - bHeight, bbox[2] + bWidth, bbox[3] + bHeight, legend, isGrid ? (int) Math.ceil(width / (double) gridDivisionCount) : 1);
+            heatmapDTO = heatmapDTO.shallowClone();
             heatmapDTO.setTileExtents(bbox);
 
             // getHeatMap is cached. The process to trigger hiddenFacets is:
@@ -1649,6 +1657,7 @@ public class WMSController extends AbstractSecureController {
             double bufferHeight = Math.max(buffer, hHeight);
 
             HeatmapDTO circlesHeatmap = searchDAO.getHeatMap(requestParams.getFormattedQuery(), requestParams.getFormattedFq(), bbox[0] - bufferWidth, bbox[1] - bufferHeight, bbox[2] + bufferWidth, bbox[3] + bufferHeight, circlesLegend, 1);
+            circlesHeatmap = circlesHeatmap.shallowClone();
             circlesHeatmap.setTileExtents(bbox);
             return circlesHeatmap;
         }
@@ -1781,14 +1790,14 @@ public class WMSController extends AbstractSecureController {
         CoordinateOperation transformTo4326 = new DefaultCoordinateOperationFactory().createOperation(sourceCRS, targetCRS);
         CoordinateOperation transformFrom4326 = new DefaultCoordinateOperationFactory().createOperation(targetCRS, sourceCRS);
         double[] bbox4326 = new double[4];     // extents in EPSG:4326
-        double[] bboxSRS = new double[4];      //extents in target SRS
+        double[] bboxSRS = new double[4];      // extents in target SRS
         if (bboxString != null) {
             transformBBox(transformTo4326, bboxString, bboxSRS, bbox4326);
         } else {
             transformBBox(transformFrom4326, extents, bbox4326, bboxSRS);
             bboxString = bboxSRS[0] + "," + bboxSRS[1] + "," + bboxSRS[2] + "," + bboxSRS[3];
         }
-
+               
         int width = (int) ((dpi / 25.4) * widthMm);
         int height = (int) Math.round(width * ((bboxSRS[3] - bboxSRS[1]) / (bboxSRS[2] - bboxSRS[0])));
 
@@ -1831,7 +1840,7 @@ public class WMSController extends AbstractSecureController {
 
         // add query parameters
         speciesAddress += serialisedQueryParameters;
-
+               
         URL speciesURL = new URL(speciesAddress);
         BufferedImage speciesImage = ImageIO.read(speciesURL);
 
@@ -2034,7 +2043,7 @@ public class WMSController extends AbstractSecureController {
 
         // render layers remainder
         for (List<List<Integer>> rows : layers) {
-            if (heatmapDTO.legend != null && heatmapDTO.legend.get(layerIdx) != null && heatmapDTO.legend.get(layerIdx).isRemainder()) {
+            if (heatmapDTO.legend != null && heatmapDTO.legend.size() > layerIdx && heatmapDTO.legend.get(layerIdx) != null && heatmapDTO.legend.get(layerIdx).isRemainder()) {
                 renderLayer(heatmapDTO,
                         vars,
                         pointWidth,
@@ -2054,7 +2063,7 @@ public class WMSController extends AbstractSecureController {
 
         // render layers
         for (List<List<Integer>> rows : layers) {
-            if (heatmapDTO.legend == null || heatmapDTO.legend.get(layerIdx) == null || !heatmapDTO.legend.get(layerIdx).isRemainder()) {
+            if (heatmapDTO.legend == null || heatmapDTO.legend.size() <= layerIdx || heatmapDTO.legend.get(layerIdx) == null || !heatmapDTO.legend.get(layerIdx).isRemainder()) {
                 renderLayer(heatmapDTO,
                         vars,
                         pointWidth,
@@ -2433,7 +2442,7 @@ public class WMSController extends AbstractSecureController {
                     }
 
                     // make coordinates to match target SRS
-                    GeneralDirectPosition sourceCoords = new GeneralDirectPosition(lng, lat);
+                    GeneralDirectPosition sourceCoords = new GeneralDirectPosition(lng, Math.max(Math.min(lat, 89.9), -89.9));
                     DirectPosition targetCoords = transformFrom4326.getMathTransform().transform(sourceCoords, null);
                     int px = scaleLongitudeForImage(targetCoords.getOrdinate(0), tilebbox[0], tilebbox[2], (int) tileWidthInPx);
                     int py = scaleLatitudeForImage(targetCoords.getOrdinate(1), tilebbox[3], tilebbox[1], (int) tileHeightInPx);

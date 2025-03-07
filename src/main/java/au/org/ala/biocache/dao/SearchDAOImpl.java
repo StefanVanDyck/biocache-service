@@ -216,6 +216,23 @@ public class SearchDAOImpl implements SearchDAO {
     @Value("${wms.legendMaxItems:30}")
     private int wmslegendMaxItems;
 
+    /**
+     * Maximum allowed value for the flimit (facet limit) parameter in user
+     * requests.
+     * Set to -1 to disable the limit. When enabled, requests exceeding this value
+     * will receive a 400 Bad Request response.
+     */
+    @Value("${flimit.max:-1}")
+    private int flimitMax;
+
+    /**
+     * Maximum allowed value for the pageSize parameter in user requests.
+     * Set to -1 to disable the limit. When enabled, requests exceeding this value
+     * will receive a 400 Bad Request response.
+     */
+    @Value("${pageSize.max:-1}")
+    private int pageSizeMax;
+
     @Value("${download.offline.max.size:100000000}")
     public Integer dowloadOfflineMaxSize = 100000000;
 
@@ -287,8 +304,6 @@ public class SearchDAOImpl implements SearchDAO {
         }
 
         getMaxBooleanClauses();
-
-        initSensitiveFieldMapping();
 
         countDownLatch.countDown();
     }
@@ -679,53 +694,6 @@ public class SearchDAOImpl implements SearchDAO {
         return new DownloadCallable(queries, indexDao, procDownload);
     }
 
-
-    Map<String, String[]> sensitiveFieldMapping = new HashMap();
-
-    private void initSensitiveFieldMapping() {
-
-        sensitiveFieldMapping.put("longitude", new String[]{"sensitive_decimalLongitude"});
-        sensitiveFieldMapping.put("decimalLongitude", new String[]{"sensitive_decimalLongitude"});
-        sensitiveFieldMapping.put("latitude", new String[]{"sensitive_decimalLatitude"});
-        sensitiveFieldMapping.put("decimalLatitude", new String[]{"sensitive_decimalLatitude"});
-
-        sensitiveFieldMapping.put("locality", new String[]{"sensitive_locality"});
-
-        sensitiveFieldMapping.put("footprint_wkt", new String[]{"sensitive_footprintWKT"});
-        sensitiveFieldMapping.put("footprintWKT", new String[]{"sensitive_footprintWKT"});
-
-        sensitiveFieldMapping.put("location_remarks", new String[]{"sensitive_locationRemarks"});
-        sensitiveFieldMapping.put("locationRemarks", new String[]{"sensitive_locationRemarks"});
-
-        sensitiveFieldMapping.put("verbatim_coordinates", new String[]{"sensitive_verbatimCoordinates"});
-        sensitiveFieldMapping.put("verbatimCoordinates", new String[]{"sensitive_verbatimCoordinates"});
-
-        sensitiveFieldMapping.put("verbatim_latitude", new String[]{"sensitive_verbatimLatitude"});
-        sensitiveFieldMapping.put("verbatimLatitude", new String[]{"sensitive_verbatimLatitude"});
-
-        sensitiveFieldMapping.put("verbatim_locality", new String[]{"sensitive_verbatimLocality"});
-        sensitiveFieldMapping.put("verbatimLocality", new String[]{"sensitive_verbatimLocality"});
-
-        sensitiveFieldMapping.put("verbatim_longitude", new String[]{"sensitive_verbatimLongitude"});
-        sensitiveFieldMapping.put("verbatimLongitude", new String[]{"sensitive_verbatimLongitude"});
-
-        sensitiveFieldMapping.put("day", new String[]{"sensitive_day"});
-
-        sensitiveFieldMapping.put("occurrence_date", new String[]{"sensitive_eventDate"});
-        sensitiveFieldMapping.put("eventDate", new String[]{"sensitive_eventDate"});
-
-        sensitiveFieldMapping.put("event_id", new String[]{"sensitive_eventID"});
-        sensitiveFieldMapping.put("eventID", new String[]{"sensitive_eventID"});
-
-        sensitiveFieldMapping.put("event_time", new String[]{"sensitive_eventTime"});
-        sensitiveFieldMapping.put("eventTime", new String[]{"sensitive_eventTime"});
-
-        sensitiveFieldMapping.put("month", new String[]{"sensitive_month"});
-
-        sensitiveFieldMapping.put("verbatim_event_date", new String[]{"sensitive_verbatimEventDate"});
-        sensitiveFieldMapping.put("verbatimEventDate", new String[]{"sensitive_verbatimEventDate"});
-    }
-
     /**
      * insert sensitive versions of requested fields
      *
@@ -740,14 +708,15 @@ public class SearchDAOImpl implements SearchDAO {
             // put back the original field
             fieldsWithSensitive.add(field);
             // if this filed has a sensitive mapping
-            if (sensitiveFieldMapping.containsKey(field)) {
-                // make sure sensitive fields only added once
-                fieldsWithSensitive.addAll(Arrays.stream(sensitiveFieldMapping.get(field)).filter(it -> !fieldsWithSensitiveSet.contains(it)).collect(Collectors.toList()));
-                fieldsWithSensitiveSet.addAll(Arrays.stream(sensitiveFieldMapping.get(field)).filter(it -> !fieldsWithSensitiveSet.contains(it)).collect(Collectors.toList()));
+            String sensitiveField = SensitiveFields.get(field);
+            // make sure sensitive fields only added once
+            if (sensitiveField != null && !fieldsWithSensitiveSet.contains(sensitiveField)) {
+                fieldsWithSensitive.add(sensitiveField);
+                fieldsWithSensitiveSet.add(sensitiveField);
             }
         }
 
-        downloadParams.setFields(String.join(",", fieldsWithSensitive));
+        downloadParams.setFields(String.join(",", fieldsWithSensitive), true);
     }
 
     /**
@@ -1081,6 +1050,11 @@ public class SearchDAOImpl implements SearchDAO {
             }
             trDTO.setTaxa(fDTOs);
         }
+        if (trDTO == null && qr.getFacetFields() != null && qr.getFacetFields().size() > 0) {
+            trDTO = new TaxaRankCountDTO(qr.getFacetFields().get(0).getName());
+        } else if (trDTO == null) {
+            trDTO = new TaxaRankCountDTO(""); // empty facet
+        }
         return trDTO;
     }
 
@@ -1338,6 +1312,32 @@ public class SearchDAOImpl implements SearchDAO {
     }
 
     /**
+     * Cap flimit at a max if configured and log warning when flimit requested exceeds max
+     * @param flimit the request facet limit
+     * @return The capped flimit
+     */
+    private int capFlimit(int flimit) {
+        if (flimitMax >= 0 && (flimit < 0 || flimit > flimitMax)) {
+            logger.warn("Requested facet limit exceeds maximum " + flimit + ", capping at " + flimitMax);
+            return flimitMax;
+        }
+        return flimit;
+    }
+
+    /**
+     * Cap pageSize at a max if configured and log warning when pageSize requested exceeds max
+     * @param pageSize the requested page size
+     * @return The capped flimit
+     */
+    private int capPageSize(int pageSize) {
+        if (pageSizeMax >= 0 && (pageSize < 0 || pageSize > pageSizeMax)) {
+            logger.warn("Requested page size exceeds maximum " + pageSize + ", capping at " + pageSizeMax);
+            return pageSizeMax;
+        }
+        return pageSize;
+    }
+
+    /**
      * Helper method to create SolrQuery object and add facet settings
      *
      * @return solrQuery the SolrQuery
@@ -1386,17 +1386,21 @@ public class SearchDAOImpl implements SearchDAO {
             }
 
             solrQuery.setFacetMinCount(1);
-            solrQuery.setFacetLimit(searchParams.getFlimit());
-            //include this so that the default fsort is still obeyed.
+            solrQuery.setFacetLimit(capFlimit(searchParams.getFlimit()));
+            // include this so that the default fsort is still obeyed.
             String fsort = StringUtils.isEmpty(searchParams.getFsort()) ? "count" : searchParams.getFsort();
             solrQuery.setFacetSort(fsort);
             if (searchParams.getFoffset() > 0)
                 solrQuery.add("facet.offset", Integer.toString(searchParams.getFoffset()));
             if (StringUtils.isNotEmpty(searchParams.getFprefix()))
                 solrQuery.add("facet.prefix", searchParams.getFprefix());
+            if (StringUtils.isNotEmpty(searchParams.getFcontains())) {
+                solrQuery.add("facet.contains", searchParams.getFcontains());
+                solrQuery.add("facet.contains.ignoreCase", "true");
+            }
         }
 
-        solrQuery.setRows(searchParams.getPageSize());
+        solrQuery.setRows(capPageSize(searchParams.getPageSize()));
         solrQuery.setStart(searchParams.getStart());
         if (StringUtils.isNotEmpty(searchParams.getDir()) && StringUtils.isNotEmpty(searchParams.getSort())) {
             solrQuery.setSort(searchParams.getSort(), SolrQuery.ORDER.valueOf(searchParams.getDir()));
@@ -1482,7 +1486,7 @@ public class SearchDAOImpl implements SearchDAO {
             if (facet.getValues() != null) {
                 for (FacetField.Count ffc : facet.getValues()) {
                     if (ffc.getCount() > 0) {
-                        uidStats.put(ffc.getName() != null ? ffc.getName() : "", new Integer((int) ffc.getCount()));
+                        uidStats.put(ffc.getName() != null ? ffc.getName() : "", Integer.valueOf((int) ffc.getCount()));
                     }
                 }
             }

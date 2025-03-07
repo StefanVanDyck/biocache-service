@@ -231,6 +231,15 @@ public class OccurrenceController extends AbstractSecureController {
     @Value("${page.depth.max:5000}")
     public Integer pageDepthMax;
 
+    /**
+     * Lifetime in ms for qids created internally by /occurrences/batchSearch.
+     * The qid is consumed immediately by the redirect (search) or by the queued
+     * download job. Default -1 (never expires) keeps existing behaviour; set to
+     * e.g. 86400000 (24h) to bound qid table growth once clients are verified.
+     */
+    @Value("${qid.batchSearch.maxage:-1}")
+    private Long batchSearchQidMaxAge;
+
     private final AtomicReference<String> occurrenceETag = new AtomicReference<>(UUID.randomUUID().toString());
 
     private ExecutorService executor;
@@ -938,7 +947,7 @@ public class OccurrenceController extends AbstractSecureController {
                 if (oi.getImages() != null) {
                     for (int i = 0; i < oi.getImages().length; i++) {
                         Map<String, Object> imageMetadata = imageMap.get(oi.getImages()[i]);
-                        if (oi != null) {
+                        if (imageMetadata != null) {
                             List<Map<String, Object>> md = oi.getImageMetadata();
                             if (md == null) {
                                 md = new ArrayList<>();
@@ -1330,7 +1339,7 @@ public class OccurrenceController extends AbstractSecureController {
 
         String q = sb.toString();
         title = title == null ? q : title;
-        String qid = qidCacheDao.put(q, title, null, null, null, -1, null);
+        String qid = qidCacheDao.put(q, title, null, null, null, batchSearchQidMaxAge, "biocache-service:batchSearch");
         logger.info("batchSearch: qid = " + qid);
 
         return Long.parseLong(qid);
@@ -2354,6 +2363,8 @@ public class OccurrenceController extends AbstractSecureController {
         addField(sd, event, "startYear", getFieldName);
         addField(sd, event, "endYear", getFieldName);
         addField(sd, event, "datePrecision", getFieldName);
+        addField(sd, event, "sampleSizeValue", getFieldName);
+        addField(sd, event, "sampleSizeUnit", getFieldName);
 
         // au.org.ala.biocache.model.Attribution
         Map attribution = new HashMap();
