@@ -12,6 +12,8 @@ import java.time.Instant
 //    }
 //}
 
+
+
 plugins {
     id "java"
     id "war"
@@ -188,7 +190,8 @@ test {
 }
 
 bootWar {
-    enabled = false
+    enabled = true
+    archiveName "biocache-service-${version}-exec.war"
 }
 
 war {
