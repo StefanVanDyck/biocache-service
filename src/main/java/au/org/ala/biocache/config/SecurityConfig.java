@@ -54,7 +54,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     // Override bean from ala-security to include cookieMatcher, should enforce authentication when the cookie is present
     @Bean
-    public Config pac4jConfig(List<Client> clients, SessionStore sessionStore, WebContextFactory webContextFactory) {
+    public Config overridePac4jConfig(List<Client> clients, SessionStore sessionStore, WebContextFactory webContextFactory) {
         Config config = new Config(clients);
 
         config.setSessionStore(sessionStore);
