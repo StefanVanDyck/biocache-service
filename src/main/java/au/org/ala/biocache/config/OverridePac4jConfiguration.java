@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Primary;
 import java.util.List;
 
 @Configuration
-public class OverridePac4jConfig {
+public class OverridePac4jConfiguration {
 
     @Value("${security.core.authCookieName:ALA_AUTH}")
     String authCookieName;
