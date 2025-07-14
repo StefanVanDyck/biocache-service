@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -54,6 +55,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     // Override bean from ala-security to include cookieMatcher, should enforce authentication when the cookie is present
     @Bean
+    @Primary
     public Config overridePac4jConfig(List<Client> clients, SessionStore sessionStore, WebContextFactory webContextFactory) {
         Config config = new Config(clients);
 
