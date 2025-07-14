@@ -31,9 +31,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     AlaWebServiceAuthFilter alaWebServiceAuthFilter;
 
-    @Value("${security.core.authCookieName:ALA_AUTH}")
-    String authCookieName;
-
     @Override
     protected void configure(HttpSecurity http) throws Exception {
 
