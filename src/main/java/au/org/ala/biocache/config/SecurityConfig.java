@@ -51,20 +51,4 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public GrantedAuthorityDefaults grantedAuthorityDefaults() {
         return  new GrantedAuthorityDefaults("");
     }
-
-
-    // Override bean from ala-security to include cookieMatcher, should enforce authentication when the cookie is present
-    @Bean
-    @Primary
-    public Config overridePac4jConfig(List<Client> clients, SessionStore sessionStore, WebContextFactory webContextFactory) {
-        Config config = new Config(clients);
-
-        config.setSessionStore(sessionStore);
-        config.setWebContextFactory(webContextFactory);
-        config.addMatcher("ALA_COOKIE_MATCHER",
-                (ctx, ss) -> {
-                    return ctx.getRequestCookies().stream().anyMatch(cookie -> cookie.getName().equals(authCookieName));
-                });
-        return config;
-    }
 }
