@@ -337,6 +337,7 @@ public class OccurrenceIndex {
 
     public static final String SPECIES_SUBGROUP = "speciesSubgroup";
     public static final String SPECIES_GROUP = "speciesGroup";
+    public static final String SPECIESLIST = "speciesListUid";
     public static final String IMAGE_URL = "imageID";
     public static final String LAT_LNG = "lat_long";
     public static final String RAW_NAME = "raw_scientificName"; // TODO: check mapping (this is a guess)
