@@ -335,6 +335,15 @@ public class ExploreController {
     }
 
     /**
+     * Updates the requestParams to take into account the provided specieslist
+     *
+     * @param group
+     */
+    private void addSpeciesListFilterToQuery(SpatialSearchRequestDTO requestParams, String group) {
+        addFacetFilterToQuery(requestParams, OccurrenceIndex.SPECIESLIST, group);
+    }
+
+    /**
      * Updates the requestParams to take into account the provided species group
      *
      * @param facetValue
@@ -417,6 +426,39 @@ public class ExploreController {
         SpatialSearchRequestDTO requestParams = SpatialSearchRequestDTO.create(params);
 
         addGroupFilterToQuery(requestParams, group);
+        applyFacetForCounts(requestParams, common);
+
+        // Legacy usage
+        requestParams.setFlimit(requestParams.getPageSize());
+        requestParams.setPageSize(0);
+        requestParams.setFoffset(requestParams.getStart());
+        requestParams.setFsort(requestParams.getSort());
+        requestParams.setSort("");
+
+        response.setContentType("application/json");
+
+        searchDao.findAllSpeciesJSON(requestParams, includeRank, response.getOutputStream());
+    }
+
+    /**
+     * JSON web service that returns a list of species and record counts for a given location search and a given species list.
+     *
+     * @throws Exception
+     */
+    @Operation(summary = "Returns a list of specieslists and record counts for a given location search", tags = "Explore")
+    @RequestMapping(value = {"/explore/specieslist/{speciesListId}"
+    }, method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ApiParam(value = "speciesListId", required = true)
+    public void listSpeciesForSpeciesList(
+        @ParameterObject SpatialSearchRequestParams params,
+        @PathVariable(value = "speciesListId") String speciesListId,
+        @RequestParam(value = "common", required = false, defaultValue = "false") boolean common,
+        @RequestParam(value = "includeRank", required = false, defaultValue = "true") boolean includeRank,
+        HttpServletResponse response) throws Exception {
+
+        SpatialSearchRequestDTO requestParams = SpatialSearchRequestDTO.create(params);
+
+        addSpeciesListFilterToQuery(requestParams, speciesListId);
         applyFacetForCounts(requestParams, common);
 
         // Legacy usage
