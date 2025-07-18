@@ -17,6 +17,8 @@ package au.org.ala.biocache.web;
 
 import au.org.ala.biocache.dao.SearchDAO;
 import au.org.ala.biocache.dto.*;
+import au.org.ala.biocache.service.ListsService;
+import au.org.ala.biocache.service.ListsService.SpeciesListSearchDTO;
 import au.org.ala.biocache.util.QueryFormatUtils;
 import com.ctc.wstx.util.URLUtil;
 import io.swagger.annotations.ApiParam;
@@ -33,7 +35,6 @@ import org.springdoc.api.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -71,6 +72,9 @@ public class ExploreController {
 
     @Inject
     protected QueryFormatUtils queryFormatUtils;
+
+    @Inject
+    protected ListsService listsService;
 
     @Value("${species.subgroups.url:/data/biocache/config/subgroups.json}")
     protected String speciesSubgroupsUrl;
@@ -230,6 +234,29 @@ public class ExploreController {
     }
 
     /**
+     * Returns a list of species lists and counts that will need to be displayed.
+     */
+    @Operation(summary = "Returns a list of species lists and counts that will need to be displayed", tags = "Explore")
+    @RequestMapping(value = {"/explore/specieslists"
+    }, method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody
+    List<SpeciesListDTO> speciesLists(@ParameterObject SpatialSearchRequestParams params) throws Exception {
+
+        List<SpeciesListDTO> speciesListsRet = new ArrayList<>();
+        List<SpeciesListSearchDTO.SpeciesListDTO> speciesLists = listsService.getLists();
+
+        for (SpeciesListSearchDTO.SpeciesListDTO speciesList : speciesLists) {
+            Integer[] counts = getSpeciesListCount(params, speciesList.dataResourceUid);
+            SpeciesListDTO sdto = new SpeciesListDTO();
+            sdto.setName(speciesList.listName);
+            sdto.setCount(counts[0]);
+            sdto.setSpeciesCount(counts[1]);
+            speciesListsRet.add(sdto);
+        }
+        return speciesListsRet;
+    }
+
+    /**
      * Returns a list of species groups and counts that will need to be displayed.
      */
     @Operation(summary = "Returns a list of species groups and counts that will need to be displayed", tags = "Explore")
@@ -313,6 +340,34 @@ public class ExploreController {
 
         SpatialSearchRequestDTO requestParams = SpatialSearchRequestDTO.create(params);
         addGroupFilterToQuery(requestParams, group);
+
+        // find number of occurrences
+        requestParams.setPageSize(0);
+        requestParams.setFacet(false);
+        SearchResultDTO results = searchDao.findByFulltextSpatialQuery(requestParams, false, null);
+
+        // estimate number of species
+        int speciesCount = (int) searchDao.estimateUniqueValues(requestParams, OccurrenceIndex.TAXON_NAME);
+
+        return new Integer[]{(int) results.getTotalRecords(), speciesCount};
+    }
+
+    /**
+     * Returns the number of records and distinct species in a particular species group
+     *
+     * @param speciesListId
+     * @return
+     * @throws Exception
+     */
+    @Operation(summary = "Returns the number of records and distinct species in a particular species list", tags = "Explore", description = "The first count is total number of occurrence, the second is the number of distinct species")
+    @RequestMapping(value = { "/explore/counts/specieslist/{speciesListId}"
+    }, method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody
+    Integer[] getSpeciesListCount(@ParameterObject SpatialSearchRequestParams params,
+                               @PathVariable(value = "speciesListId") String speciesListId) throws Exception {
+
+        SpatialSearchRequestDTO requestParams = SpatialSearchRequestDTO.create(params);
+        addSpeciesListFilterToQuery(requestParams, speciesListId);
 
         // find number of occurrences
         requestParams.setPageSize(0);
@@ -445,7 +500,7 @@ public class ExploreController {
      *
      * @throws Exception
      */
-    @Operation(summary = "Returns a list of specieslists and record counts for a given location search", tags = "Explore")
+    @Operation(summary = "Returns a list of species and record counts for a given species list and a location search", tags = "Explore")
     @RequestMapping(value = {"/explore/specieslist/{speciesListId}"
     }, method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ApiParam(value = "speciesListId", required = true)
