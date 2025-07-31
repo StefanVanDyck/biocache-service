@@ -1,7 +1,6 @@
 package au.org.ala.biocache.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.util.List;
 
 /**
  * DTO for species list information including counts
@@ -9,6 +8,7 @@ import java.util.List;
 @Schema(name = "SpeciesList", description = "Species List")
 public class SpeciesListDTO {
 
+    private String drUid;
     private String name;
     private long count;
     private long speciesCount;
@@ -19,7 +19,8 @@ public class SpeciesListDTO {
         this.name = name;
     }
 
-    public SpeciesListDTO(String name, long speciesCount, long count){
+    public SpeciesListDTO(String drUid, String name, long speciesCount, long count){
+        this.drUid = drUid;
         this.name = name;
         this.speciesCount = speciesCount;
         this.count = count;
@@ -58,5 +59,13 @@ public class SpeciesListDTO {
      */
     public void setSpeciesCount(long speciesCount) {
         this.speciesCount = speciesCount;
+    }
+
+    public String getDrUid() {
+        return drUid;
+    }
+
+    public void setDrUid(String drUid) {
+        this.drUid = drUid;
     }
 }

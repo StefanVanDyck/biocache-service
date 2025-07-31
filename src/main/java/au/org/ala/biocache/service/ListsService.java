@@ -43,6 +43,7 @@ public class ListsService {
 
     private static final Logger logger = Logger.getLogger(DownloadService.class);
     public static final String GENERAL_PURPOSE_LISTS = "generalPurposeLists";
+    public static final String PUBLIC_LIST_TYPE = "Public";
 
     @Inject
     protected RestOperations restTemplate; // NB MappingJacksonHttpMessageConverter() injected by Spring
@@ -57,7 +58,7 @@ public class ListsService {
     private String speciesListUrl;
 
     private Map<String, Map<String, Set<String>>> data = RestartDataService.get(this, "data", new TypeReference<HashMap<String, Map<String, Set<String>>>>(){}, HashMap.class);
-    private Map<String, Set<String>> generalPurposeLists = RestartDataService.get(this, GENERAL_PURPOSE_LISTS, new TypeReference<HashMap<String, Set<String>>>(){}, HashMap.class);
+    private Map<String, List<SpeciesListDTO>> generalPurposeLists = RestartDataService.get(this, GENERAL_PURPOSE_LISTS, new TypeReference<HashMap<String, List<SpeciesListDTO>>>(){}, HashMap.class);
 
     @PostConstruct
     private void init() {
@@ -102,7 +103,7 @@ public class ListsService {
                         }
 
                         if((publicLists != null && publicLists.size() > 0)) {
-                            generalSpeciesListsMap.put("Public", getItemsMap(publicLists, false));
+                            generalSpeciesListsMap.put(PUBLIC_LIST_TYPE, getPublicSpeciesLists(publicLists));
 
                             generalPurposeLists = generalSpeciesListsMap;
                         }
@@ -146,28 +147,29 @@ public class ListsService {
         return map;
     }
 
-    public List<SpeciesListDTO> getLists(){
+    private List<SpeciesListDTO> getPublicSpeciesLists(Map speciesLists) throws Exception {
+        List ja = (List) speciesLists.get("lists");
+        List<SpeciesListDTO> retList= new ArrayList<>();
+        for (int i = 0; i < ja.size(); i++) {
+            String name = ((Map) ja.get(i)).get("listName").toString();
+            String dr = ((Map) ja.get(i)).get("dataResourceUid").toString();
+            SpeciesListDTO dto = new SpeciesListDTO();
+            dto.dataResourceUid = dr;
+            dto.listName = name;
+            retList.add(dto);
+        }
+
+        return retList;
+    }
+
+    public List<SpeciesListDTO> getLists() {
         try {
             wait.await();
         } catch (InterruptedException e) {
             logger.error("Error waiting for lists to be loaded", e);
         }
 
-        List<SpeciesListDTO> lists = new ArrayList<>();
-        if (generalPurposeLists != null && generalPurposeLists.size() > 0) {
-            for (Map.Entry<String, Map<String, Set<String>>> entry : data.entrySet()) {
-                String listType = entry.getKey();
-                Map<String, Set<String>> listItems = entry.getValue();
-                for (Map.Entry<String, Set<String>> itemEntry : listItems.entrySet()) {
-                    SpeciesListDTO dto = new SpeciesListDTO();
-                    dto.dataResourceUid = itemEntry.getKey();
-                    dto.listName = String.join(", ", itemEntry.getValue());
-                    dto.listType = listType;
-                    lists.add(dto);
-                }
-            }
-        }
-        return lists;
+        return generalPurposeLists.get(PUBLIC_LIST_TYPE);
     }
 
     @Cacheable("speciesListItems")
