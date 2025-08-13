@@ -95,7 +95,9 @@ public class CassandraStoreDAOImpl implements StoreDAO {
             builder = builder.withSSL();
         }
         if (useSigv4Auth) {
-            builder = builder.withAuthProvider(new SigV4AuthProvider());
+            builder = builder
+                    .withAuthProvider(new SigV4AuthProvider())
+                    .withQueryOptions(new QueryOptions().setConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM));
         } else if (username != null && !username.isEmpty() && password != null && !password.isEmpty()) {
             builder = builder.withAuthProvider(new PlainTextAuthProvider(username, password));
         }
@@ -260,7 +262,7 @@ public class CassandraStoreDAOImpl implements StoreDAO {
                     session.execute("CREATE TABLE " + table + "( key text PRIMARY KEY, value text );");
                     tryQuery = true;
                 } catch (Exception ex) {
-                    logger.error("Failed to create table " + table);
+                    logger.error("Failed to create table " + table + ": " , ex);
                 }
             }
         }
