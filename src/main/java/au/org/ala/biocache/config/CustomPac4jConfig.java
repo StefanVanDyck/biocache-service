@@ -1,6 +1,11 @@
 package au.org.ala.biocache.config;
 
 import org.pac4j.core.config.Config;
+import org.pac4j.core.context.WebContext;
+import org.pac4j.core.http.callback.CallbackUrlResolver;
+import org.pac4j.core.http.callback.QueryParameterCallbackUrlResolver;
+import org.pac4j.core.http.url.DefaultUrlResolver;
+import org.pac4j.core.http.url.UrlResolver;
 import org.pac4j.jee.filter.CallbackFilter;
 import org.pac4j.jee.filter.SecurityFilter;
 import org.pac4j.oidc.client.OidcClient;
@@ -26,9 +31,20 @@ public class CustomPac4jConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "security.oidc", name = "enabled")
-    OidcClient oidcClient(OidcConfiguration oidcConfiguration){
+    OidcClient oidcClient(OidcConfiguration oidcConfiguration) {
         OidcClient client = new OidcClient(oidcConfiguration);
-        client.setCallbackUrl("http://localhost:8081/biocache-service/callback");
+        client.setCallbackUrl("/callback");
+
+
+        client.setCallbackUrlResolver(new QueryParameterCallbackUrlResolver() {
+            final UrlResolver completingUrlResolver = new DefaultUrlResolver(true);
+
+            @Override
+            public String compute(final UrlResolver urlResolver, final String url, final String clientName, final WebContext context) {
+                return super.compute(completingUrlResolver, url, clientName, context);
+            }
+
+        });
         return client;
     }
 
@@ -54,7 +70,7 @@ public class CustomPac4jConfig {
         return frb;
     }
 
-    @ConditionalOnProperty(prefix= "security.oidc", name="enabled")
+    @ConditionalOnProperty(prefix = "security.oidc", name = "enabled")
     @Bean
     FilterRegistrationBean<CallbackFilter> pac4jCallbackFilter(Config pac4jConfig) {
         var frb = new FilterRegistrationBean<CallbackFilter>();
