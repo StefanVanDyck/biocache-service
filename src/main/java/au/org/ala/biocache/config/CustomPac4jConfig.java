@@ -41,7 +41,7 @@ public class CustomPac4jConfig {
 
             @Override
             public String compute(final UrlResolver urlResolver, final String url, final String clientName, final WebContext context) {
-                return super.compute(completingUrlResolver, url, clientName, context);
+                return super.compute(completingUrlResolver, url, clientName, context).replace("http://", "https://");
             }
 
         });
