@@ -33,7 +33,7 @@ public class CustomPac4jConfig {
     @ConditionalOnProperty(prefix = "security.oidc", name = "enabled")
     OidcClient oidcClient(OidcConfiguration oidcConfiguration) {
         OidcClient client = new OidcClient(oidcConfiguration);
-        client.setCallbackUrl("/callback");
+        client.setCallbackUrl("callback");
 
 
         client.setCallbackUrlResolver(new QueryParameterCallbackUrlResolver() {
