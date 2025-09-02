@@ -248,6 +248,7 @@ public class ExploreController {
         for (SpeciesListSearchDTO.SpeciesListDTO speciesList : speciesLists) {
             Integer[] counts = getSpeciesListCount(params, speciesList.dataResourceUid);
             SpeciesListDTO sdto = new SpeciesListDTO();
+            sdto.setDrUid(speciesList.dataResourceUid);
             sdto.setName(speciesList.listName);
             sdto.setCount(counts[0]);
             sdto.setSpeciesCount(counts[1]);
@@ -392,10 +393,10 @@ public class ExploreController {
     /**
      * Updates the requestParams to take into account the provided specieslist
      *
-     * @param group
+     * @param speciesListId
      */
-    private void addSpeciesListFilterToQuery(SpatialSearchRequestDTO requestParams, String group) {
-        addFacetFilterToQuery(requestParams, OccurrenceIndex.SPECIESLIST, group);
+    private void addSpeciesListFilterToQuery(SpatialSearchRequestDTO requestParams, String speciesListId) {
+        addFacetFilterToQuery(requestParams, OccurrenceIndex.SPECIESLIST, speciesListId);
     }
 
     /**
