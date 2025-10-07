@@ -92,7 +92,7 @@ public class ListsService {
 
                         Map threatened = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isThreatened=eq:true&isAuthoritative=eq:true"), Map.class);
                         Map invasive = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isInvasive=eq:true&isAuthoritative=eq:true"), Map.class);
-                        Map publicLists = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isBIE=eq:true"), Map.class);
+                        Map publicLists = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isAuthoritative=eq:true"), Map.class);
 
                         if ((threatened != null && threatened.size() > 0) ||
                                 (invasive != null && invasive.size() > 0)) {
