@@ -1128,7 +1128,8 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
             boolean shuttingDown = false;
             boolean doRetry = false;
 
-            SecurityContextHolder.getContext().setAuthentication(new PreAuthenticatedAuthenticationToken(currentDownload.getAlaUser(), null));
+            var auth = new PreAuthenticatedAuthenticationToken(currentDownload.getAlaUser(), List.of());
+            SecurityContextHolder.getContext().setAuthentication(auth);
 
             try (FileOutputStream fos = FileUtils.openOutputStream(new File(currentDownload.getFileLocation()));) {
                 List<CreateDoiResponse> doiResponseList = null;
