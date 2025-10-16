@@ -48,6 +48,10 @@ import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.support.AbstractMessageSource;
 import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestOperations;
 
@@ -209,14 +213,18 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
     @Value("${download.doi.propagation.delay:60000}")
     protected long doiPropagationDelay;
 
-    /** Max number of threads to use in parallel for large offline download queries */
+    /**
+     * Max number of threads to use in parallel for large offline download queries
+     */
     @Value("${download.offline.parallelquery.maxthreads:30}")
     protected Integer maxOfflineParallelQueryDownloadThreads = 30;
 
     @Value("${download.offline.queue.maxsize:50}")
     protected Integer maxOfflineQueueMaxSize = 50;
 
-    /** restrict the size of files in a zip */
+    /**
+     * restrict the size of files in a zip
+     */
     @Value("${zip.file.size.mb.max:4000}")
     public Integer maxMB;
 
@@ -294,7 +302,7 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
      */
     @Override
     public void onApplicationEvent(ContextClosedEvent event) {
-        for(ThreadPoolExecutor ex : userExecutors.values()) {
+        for (ThreadPoolExecutor ex : userExecutors.values()) {
             ex.shutdown();
         }
     }
@@ -372,7 +380,7 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
 
     /**
      * Asynchronous
-     *
+     * <p>
      * Writes the supplied download to the supplied output stream. It will
      * include all the appropriate citations etc.
      *
@@ -630,6 +638,7 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
 
     /**
      * Synchronous
+     *
      * @param requestParams
      * @param response
      * @param alaUser
@@ -693,16 +702,16 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
                 // Always write something to the citations.csv file so that users can distinguish between cases themselves when reporting issues
                 // i18n of the citation header
                 writer.writeNext(new String[]{
-                    messageSource.getMessage("citation.uid", null, "UID", null),
-                    messageSource.getMessage("citation.name", null, "Name", null),
-                    messageSource.getMessage("citation.doi", null, "DOI", null),
-                    messageSource.getMessage("citation.citation", null, "Citation", null),
-                    messageSource.getMessage("citation.rights", null, "Rights", null),
-                    messageSource.getMessage("citation.link", null, "More Information", null),
-                    messageSource.getMessage("citation.dataGeneralizations", null, "Data generalisations", null),
-                    messageSource.getMessage("citation.informationWithheld", null, "Information withheld", null),
-                    messageSource.getMessage("citation.downloadLimit", null, "Download limit", null),
-                    messageSource.getMessage("citation.count", null, "Number of Records in Download", null)
+                        messageSource.getMessage("citation.uid", null, "UID", null),
+                        messageSource.getMessage("citation.name", null, "Name", null),
+                        messageSource.getMessage("citation.doi", null, "DOI", null),
+                        messageSource.getMessage("citation.citation", null, "Citation", null),
+                        messageSource.getMessage("citation.rights", null, "Rights", null),
+                        messageSource.getMessage("citation.link", null, "More Information", null),
+                        messageSource.getMessage("citation.dataGeneralizations", null, "Data generalisations", null),
+                        messageSource.getMessage("citation.informationWithheld", null, "Information withheld", null),
+                        messageSource.getMessage("citation.downloadLimit", null, "Download limit", null),
+                        messageSource.getMessage("citation.count", null, "Number of Records in Download", null)
                 });
 
                 if (!uidStats.isEmpty()) {
@@ -727,15 +736,15 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
                         AtomicInteger uidRecordCount = uidStats.get(uid);
                         String count = Optional.ofNullable(uidRecordCount).orElseGet(() -> new AtomicInteger(0)).toString();
                         String[] row = new String[]{
-                                (String) record.getOrDefault( "uid", ""),
-                                (String) record.getOrDefault( "name", ""),
-                                (String) record.getOrDefault( "DOI", ""),
-                                (String) record.getOrDefault( "citation", ""),
-                                (String) record.getOrDefault( "rights", ""),
-                                (String) record.getOrDefault( "link", ""),
-                                (String) record.getOrDefault( "dataGeneralizations", ""),
-                                (String) record.getOrDefault( "informationWithheld", ""),
-                                (String) record.getOrDefault( "downloadLimit", ""),
+                                (String) record.getOrDefault("uid", ""),
+                                (String) record.getOrDefault("name", ""),
+                                (String) record.getOrDefault("DOI", ""),
+                                (String) record.getOrDefault("citation", ""),
+                                (String) record.getOrDefault("rights", ""),
+                                (String) record.getOrDefault("link", ""),
+                                (String) record.getOrDefault("dataGeneralizations", ""),
+                                (String) record.getOrDefault("informationWithheld", ""),
+                                (String) record.getOrDefault("downloadLimit", ""),
                                 count};
                         writer.writeNext(row);
 
@@ -757,7 +766,7 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
                     }
 
                     if (useableRecords.size() < uidStats.keySet().size()) {
-                        List<String> usedUids = useableRecords.stream().map(record -> (String)record.get("uid")).collect(toList());
+                        List<String> usedUids = useableRecords.stream().map(record -> (String) record.get("uid")).collect(toList());
                         String missingUids = uidStats.keySet().stream().filter(uid -> !usedUids.contains(uid)).collect(Collectors.joining());
                         logger.warn("The following UIDs will not have citations (missing in registry): " + missingUids);
                     }
@@ -1138,6 +1147,11 @@ public class DownloadService implements ApplicationListener<ContextClosedEvent> 
 
             boolean shuttingDown = false;
             boolean doRetry = false;
+
+            var user = currentDownload.getAlaUser();
+            var authorities = user.getRoles().stream().map(SimpleGrantedAuthority::new).collect(toList());
+            var auth = new PreAuthenticatedAuthenticationToken(user, List.of(), authorities);
+            SecurityContextHolder.getContext().setAuthentication(auth);
 
             try (FileOutputStream fos = FileUtils.openOutputStream(new File(currentDownload.getFileLocation()));) {
                 List<CreateDoiResponse> doiResponseList = null;
