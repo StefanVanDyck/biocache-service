@@ -146,6 +146,8 @@ public class OccurrenceIndex {
     String subspeciesGuid;
     @Field("stateProvince") @Schema(description="http://rs.tdwg.org/dwc/terms/stateProvince")
     String stateProvince;
+    @Field("municipality") @Schema(description="http://rs.tdwg.org/dwc/terms/municipality")
+    String municipality;
     @Field("decimalLatitude") @Schema(description="http://rs.tdwg.org/dwc/terms/decimalLatitude")
     Double decimalLatitude;
     @Field("decimalLongitude") @Schema(description="http://rs.tdwg.org/dwc/terms/decimalLongitude")
@@ -685,6 +687,14 @@ public class OccurrenceIndex {
 
     public void setStateProvince(String stateProvince) {
         this.stateProvince = stateProvince;
+    }
+
+    public String getMunicipality() {
+        return municipality;
+    }
+
+    public void setMunicipality(String municipality) {
+        this.municipality = municipality;
     }
 
     public Double getDecimalLatitude() {
