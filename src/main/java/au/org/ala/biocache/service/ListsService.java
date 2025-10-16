@@ -42,6 +42,7 @@ import java.util.concurrent.CountDownLatch;
 public class ListsService {
 
     private static final Logger logger = Logger.getLogger(DownloadService.class);
+    public static final String GENERAL_PURPOSE_LISTS = "generalPurposeLists";
 
     @Inject
     protected RestOperations restTemplate; // NB MappingJacksonHttpMessageConverter() injected by Spring
@@ -56,6 +57,7 @@ public class ListsService {
     private String speciesListUrl;
 
     private Map<String, Map<String, Set<String>>> data = RestartDataService.get(this, "data", new TypeReference<HashMap<String, Map<String, Set<String>>>>(){}, HashMap.class);
+    private Map<String, Set<String>> generalPurposeLists = RestartDataService.get(this, GENERAL_PURPOSE_LISTS, new TypeReference<HashMap<String, Set<String>>>(){}, HashMap.class);
 
     @PostConstruct
     private void init() {
@@ -73,7 +75,7 @@ public class ListsService {
 
     @Scheduled(fixedDelay = 43200000)// schedule to run every 12 hours
     public void refreshCache() {
-        if (data.size() > 0) {
+        if (data.size() > 0 && generalPurposeLists.size() > 0) {
             //data exists, no need to wait
             wait.countDown();
         }
@@ -85,9 +87,11 @@ public class ListsService {
                 public void run() {
                     try {
                         HashMap map = new HashMap();
+                        HashMap generalSpeciesListsMap = new HashMap();
 
                         Map threatened = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isThreatened=eq:true&isAuthoritative=eq:true"), Map.class);
                         Map invasive = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isInvasive=eq:true&isAuthoritative=eq:true"), Map.class);
+                        Map publicLists = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isBIE=eq:true"), Map.class);
 
                         if ((threatened != null && threatened.size() > 0) ||
                                 (invasive != null && invasive.size() > 0)) {
@@ -95,6 +99,12 @@ public class ListsService {
                             map.put("Invasive", getItemsMap(invasive, false));
 
                             data = map;
+                        }
+
+                        if((publicLists != null && publicLists.size() > 0)) {
+                            generalSpeciesListsMap.put("Public", getItemsMap(publicLists, false));
+
+                            generalPurposeLists = generalSpeciesListsMap;
                         }
                     } catch (Exception e) {
                         logger.error("failed to get species lists for threatened or invasive species", e);
@@ -134,6 +144,30 @@ public class ListsService {
         }
 
         return map;
+    }
+
+    public List<SpeciesListDTO> getLists(){
+        try {
+            wait.await();
+        } catch (InterruptedException e) {
+            logger.error("Error waiting for lists to be loaded", e);
+        }
+
+        List<SpeciesListDTO> lists = new ArrayList<>();
+        if (generalPurposeLists != null && generalPurposeLists.size() > 0) {
+            for (Map.Entry<String, Map<String, Set<String>>> entry : data.entrySet()) {
+                String listType = entry.getKey();
+                Map<String, Set<String>> listItems = entry.getValue();
+                for (Map.Entry<String, Set<String>> itemEntry : listItems.entrySet()) {
+                    SpeciesListDTO dto = new SpeciesListDTO();
+                    dto.dataResourceUid = itemEntry.getKey();
+                    dto.listName = String.join(", ", itemEntry.getValue());
+                    dto.listType = listType;
+                    lists.add(dto);
+                }
+            }
+        }
+        return lists;
     }
 
     @Cacheable("speciesListItems")
