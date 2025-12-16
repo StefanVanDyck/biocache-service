@@ -992,10 +992,8 @@ public class OccurrenceController extends AbstractSecureController {
     @RequestMapping(value = {"/cache/dqf/refresh"}, method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     public @ResponseBody
     String refreshDQPCache() {
-
         dataQualityService.clearCache();
-
-        return "Data Quality Profiles cache cleared";
+        return null;
     }
 
     /**
