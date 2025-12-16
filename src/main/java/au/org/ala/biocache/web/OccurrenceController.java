@@ -982,6 +982,23 @@ public class OccurrenceController extends AbstractSecureController {
     }
 
     /**
+     * Clear Data Quality Profiles cache only
+     *
+     * @return
+     */
+    @Secured({"ROLE_ADMIN", "ala/internal"})
+    @SecurityRequirement(name = "JWT")
+    @Operation(summary = "Refresh Data Quality Profiles cache", tags = "Monitoring")
+    @RequestMapping(value = {"/cache/dqf/refresh"}, method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    public @ResponseBody
+    String refreshDQPCache() {
+
+        dataQualityService.clearCache();
+
+        return "Data Quality Profiles cache cleared";
+    }
+
+    /**
      * Regenerate the ETag after clearing the cache so that cached responses are identified as out of date
      */
     private void regenerateETag() {
