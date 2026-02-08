@@ -226,6 +226,14 @@ public class SearchDAOImpl implements SearchDAO {
     @Value("${flimit.max:-1}")
     private int flimitMax;
 
+    /**
+     * Maximum allowed value for the pageSize parameter in user requests.
+     * Set to -1 to disable the limit. When enabled, requests exceeding this value
+     * will receive a 400 Bad Request response.
+     */
+    @Value("${pageSize.max:-1}")
+    private int pageSizeMax;
+
     @Value("${download.offline.max.size:100000000}")
     public Integer dowloadOfflineMaxSize = 100000000;
 
@@ -1366,6 +1374,24 @@ public class SearchDAOImpl implements SearchDAO {
     }
 
     /**
+     * Validate the user-supplied pageSize against the configured maximum ({@code pageSize.max}).
+     * If {@code pageSize.max} is set to -1, no limit is enforced.
+     * Only applied to user-facing code paths; internal operations that need
+     * specific page sizes should call {@code setRows()} directly on the SolrQuery.
+     *
+     * @param pageSize the requested page size
+     * @return the validated page size
+     * @throws ResponseStatusException with HTTP 400 if the page size exceeds the configured max
+     */
+    private int capPageSize(int pageSize) {
+        if (pageSizeMax >= 0 && (pageSize < 0 || pageSize > pageSizeMax)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Requested pageSize=" + pageSize + " exceeds the maximum allowed value of " + pageSizeMax);
+        }
+        return pageSize;
+    }
+
+    /**
      * Helper method to create SolrQuery object and add facet settings
      *
      * @return solrQuery the SolrQuery
@@ -1426,7 +1452,7 @@ public class SearchDAOImpl implements SearchDAO {
                 solrQuery.add("facet.contains", searchParams.getFcontains());
         }
 
-        solrQuery.setRows(searchParams.getPageSize());
+        solrQuery.setRows(capPageSize(searchParams.getPageSize()));
         solrQuery.setStart(searchParams.getStart());
         if (StringUtils.isNotEmpty(searchParams.getDir()) && StringUtils.isNotEmpty(searchParams.getSort())) {
             solrQuery.setSort(searchParams.getSort(), SolrQuery.ORDER.valueOf(searchParams.getDir()));
