@@ -5,6 +5,7 @@ out/*
 build/
 *.ipr
 *.iws
+*.class
 
 src/main/resources/git.properties
 target/
