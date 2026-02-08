@@ -45,6 +45,8 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.support.AbstractMessageSource;
 import org.springframework.stereotype.Component;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -2623,7 +2625,7 @@ public class SearchDAOImpl implements SearchDAO {
         solrQuery.setFacet(true);
         solrQuery.addFacetField(pointType);
         solrQuery.setFacetMinCount(1);
-        solrQuery.setFacetLimit(searchParams.getFlimit());
+        solrQuery.setFacetLimit(capFlimit(searchParams.getFlimit()));
 
         QueryResponse qr = query(solrQuery); // can throw exception
 
