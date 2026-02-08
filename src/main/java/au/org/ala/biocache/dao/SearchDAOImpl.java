@@ -45,6 +45,8 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.support.AbstractMessageSource;
 import org.springframework.stereotype.Component;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -215,6 +217,14 @@ public class SearchDAOImpl implements SearchDAO {
      */
     @Value("${wms.legendMaxItems:30}")
     private int wmslegendMaxItems;
+
+    /**
+     * Maximum allowed value for the flimit (facet limit) parameter in user requests.
+     * Set to -1 to disable the limit. When enabled, requests exceeding this value
+     * will receive a 400 Bad Request response.
+     */
+    @Value("${flimit.max:-1}")
+    private int flimitMax;
 
     @Value("${download.offline.max.size:100000000}")
     public Integer dowloadOfflineMaxSize = 100000000;
@@ -1338,6 +1348,24 @@ public class SearchDAOImpl implements SearchDAO {
     }
 
     /**
+     * Validate the user-supplied flimit against the configured maximum ({@code flimit.max}).
+     * If {@code flimit.max} is set to -1, no limit is enforced.
+     * Only applied to user-facing code paths; internal operations that need
+     * unlimited facets should call {@code setFacetLimit(-1)} directly on the SolrQuery.
+     *
+     * @param flimit the requested facet limit
+     * @return the validated facet limit
+     * @throws ResponseStatusException with HTTP 400 if the limit exceeds the configured max
+     */
+    private int capFlimit(int flimit) {
+        if (flimitMax >= 0 && (flimit < 0 || flimit > flimitMax)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Requested flimit=" + flimit + " exceeds the maximum allowed value of " + flimitMax);
+        }
+        return flimit;
+    }
+
+    /**
      * Helper method to create SolrQuery object and add facet settings
      *
      * @return solrQuery the SolrQuery
@@ -1386,7 +1414,7 @@ public class SearchDAOImpl implements SearchDAO {
             }
 
             solrQuery.setFacetMinCount(1);
-            solrQuery.setFacetLimit(searchParams.getFlimit());
+            solrQuery.setFacetLimit(capFlimit(searchParams.getFlimit()));
             //include this so that the default fsort is still obeyed.
             String fsort = StringUtils.isEmpty(searchParams.getFsort()) ? "count" : searchParams.getFsort();
             solrQuery.setFacetSort(fsort);
@@ -2621,7 +2649,7 @@ public class SearchDAOImpl implements SearchDAO {
         solrQuery.setFacet(true);
         solrQuery.addFacetField(pointType);
         solrQuery.setFacetMinCount(1);
-        solrQuery.setFacetLimit(searchParams.getFlimit());
+        solrQuery.setFacetLimit(capFlimit(searchParams.getFlimit()));
 
         QueryResponse qr = query(solrQuery); // can throw exception
 
