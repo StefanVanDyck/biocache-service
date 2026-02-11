@@ -1448,8 +1448,10 @@ public class SearchDAOImpl implements SearchDAO {
                 solrQuery.add("facet.offset", Integer.toString(searchParams.getFoffset()));
             if (StringUtils.isNotEmpty(searchParams.getFprefix()))
                 solrQuery.add("facet.prefix", searchParams.getFprefix());
-            if (StringUtils.isNotEmpty(searchParams.getFcontains()))
+            if (StringUtils.isNotEmpty(searchParams.getFcontains())) {
                 solrQuery.add("facet.contains", searchParams.getFcontains());
+                solrQuery.add("face.contains.ignoreCase", true);
+            }
         }
 
         solrQuery.setRows(capPageSize(searchParams.getPageSize()));
