@@ -1543,7 +1543,7 @@ public class SearchDAOImpl implements SearchDAO {
                 solrQuery.add("facet.prefix", searchParams.getFprefix());
             if (StringUtils.isNotEmpty(searchParams.getFcontains())) {
                 solrQuery.add("facet.contains", searchParams.getFcontains());
-                solrQuery.add("face.contains.ignoreCase", "true");
+                solrQuery.add("facet.contains.ignoreCase", "true");
             }
         }
 
