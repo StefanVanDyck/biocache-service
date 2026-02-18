@@ -6,6 +6,8 @@ build/
 *.ipr
 *.iws
 *.class
+bin/
+.factorypath
 
 src/main/resources/git.properties
 target/
