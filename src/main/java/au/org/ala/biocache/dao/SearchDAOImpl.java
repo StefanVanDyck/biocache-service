@@ -1292,6 +1292,16 @@ public class SearchDAOImpl implements SearchDAO {
         // The query result is stored in its original format so that all the information
         // returned is available later on if needed
         searchResult.setQr(qr);
+
+        // Extract field statistics if the request included stats=true&stats.field=...
+        if (qr.getFieldStatsInfo() != null && !qr.getFieldStatsInfo().isEmpty()) {
+            Map<String, FieldStatsItem> statsMap = new HashMap<>();
+            for (Map.Entry<String, FieldStatsInfo> entry : qr.getFieldStatsInfo().entrySet()) {
+                statsMap.put(entry.getKey(), new FieldStatsItem(entry.getValue()));
+            }
+            searchResult.setFieldStats(statsMap);
+        }
+
         return searchResult;
     }
 
@@ -1530,6 +1540,25 @@ public class SearchDAOImpl implements SearchDAO {
 
             for (String facet : searchParams.getPivotFacets()) {
                 solrQuery.addFacetPivotField(facet);
+            }
+
+            // Facet ranges
+            for (String facet : searchParams.getFacetRanges()) {
+                solrQuery.add("facet.range", facet);
+            }
+            if (searchParams.getFacetRanges().length > 0) {
+                if (StringUtils.isNotEmpty(searchParams.getFacetRangeStart())) {
+                    solrQuery.add("facet.range.start", searchParams.getFacetRangeStart());
+                }
+                if (StringUtils.isNotEmpty(searchParams.getFacetRangeEnd())) {
+                    solrQuery.add("facet.range.end", searchParams.getFacetRangeEnd());
+                }
+                if (StringUtils.isNotEmpty(searchParams.getFacetRangeGap())) {
+                    solrQuery.add("facet.range.gap", searchParams.getFacetRangeGap());
+                }
+                solrQuery.add("facet.range.other", "before");
+                solrQuery.add("facet.range.other", "after");
+                rangeAdded = true;
             }
 
             solrQuery.setFacetMinCount(1);

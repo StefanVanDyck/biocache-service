@@ -56,6 +56,16 @@ public class SearchRequestDTO {
      */
     protected String[] facets =  new String[0]; //FacetThemes.getAllFacetsLimited();
     protected String[] pivotFacets =  new String[0];
+    /**
+     * The fields to be used for facet range queries (maps to Solr facet.range).
+     */
+    protected String[] facetRanges = new String[0];
+    /** Global start value for facet ranges (maps to Solr facet.range.start) */
+    protected String facetRangeStart = "";
+    /** Global end value for facet ranges (maps to Solr facet.range.end) */
+    protected String facetRangeEnd = "";
+    /** Global gap value for facet ranges (maps to Solr facet.range.gap) */
+    protected String facetRangeGap = "";
     protected Integer facetsMax = 30; //FacetThemes.getFacetsMax();
     /** To disable facets */
     protected Boolean facet = true; //FacetThemes.getFacetDefault();
@@ -160,6 +170,17 @@ public class SearchRequestDTO {
             req.append("&fcontains=").append(fcontains);
         if(!"".equals(fcontains))
             req.append("&fcontains=").append(fcontains);
+        if (facetRanges != null && facetRanges.length > 0 && isFacet) {
+            for (String f : facetRanges) {
+                req.append("&facetRanges=").append(conditionalEncode(f, encodeParams));
+            }
+        }
+        if (StringUtils.isNotEmpty(facetRangeStart))
+            req.append("&facetRangeStart=").append(conditionalEncode(facetRangeStart, encodeParams));
+        if (StringUtils.isNotEmpty(facetRangeEnd))
+            req.append("&facetRangeEnd=").append(conditionalEncode(facetRangeEnd, encodeParams));
+        if (StringUtils.isNotEmpty(facetRangeGap))
+            req.append("&facetRangeGap=").append(conditionalEncode(facetRangeGap, encodeParams));
 
         if (!Strings.isNullOrEmpty(qualityProfile)) {
             req.append("&qualityProfile=").append(conditionalEncode(qualityProfile, encodeParams));
@@ -423,6 +444,50 @@ public class SearchRequestDTO {
         this.pivotFacets = list.toArray(new String[0]);
     }
 
+    public String[] getFacetRanges() {
+        return facetRanges;
+    }
+
+    public void setFacetRanges(String[] facetRanges) {
+        QueryFormatUtils.assertNoSensitiveValues(SearchRequestDTO.class, "facetRanges", facetRanges);
+
+        if (facetRanges != null && facetRanges.length == 1 && facetRanges[0].contains(",")) facetRanges = facetRanges[0].split(",");
+
+        List<String> list = new ArrayList<String>();
+        if (facetRanges != null) {
+            for (String f : facetRanges) {
+                if (StringUtils.isNotEmpty(f) && list.size() < facetsMax) {
+                    list.add(f);
+                }
+            }
+        }
+        this.facetRanges = list.toArray(new String[0]);
+    }
+
+    public String getFacetRangeStart() {
+        return facetRangeStart;
+    }
+
+    public void setFacetRangeStart(String facetRangeStart) {
+        this.facetRangeStart = facetRangeStart;
+    }
+
+    public String getFacetRangeEnd() {
+        return facetRangeEnd;
+    }
+
+    public void setFacetRangeEnd(String facetRangeEnd) {
+        this.facetRangeEnd = facetRangeEnd;
+    }
+
+    public String getFacetRangeGap() {
+        return facetRangeGap;
+    }
+
+    public void setFacetRangeGap(String facetRangeGap) {
+        this.facetRangeGap = facetRangeGap;
+    }
+
     public Integer getFlimit() {
         return flimit;
     }
@@ -580,6 +645,10 @@ public class SearchRequestDTO {
                 Arrays.equals(fq, that.fq) &&
                 Objects.equals(fl, that.fl) &&
                 Arrays.equals(facets, that.facets) &&
+                Arrays.equals(facetRanges, that.facetRanges) &&
+                Objects.equals(facetRangeStart, that.facetRangeStart) &&
+                Objects.equals(facetRangeEnd, that.facetRangeEnd) &&
+                Objects.equals(facetRangeGap, that.facetRangeGap) &&
                 Objects.equals(start, that.start) &&
                 Objects.equals(facetsMax, that.facetsMax) &&
                 Objects.equals(flimit, that.flimit) &&
@@ -599,9 +668,10 @@ public class SearchRequestDTO {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(formattedQuery, q, fl, start, facetsMax, flimit, fsort, foffset, fprefix, fcontains, pageSize, sort, dir, displayString, qc, facet, qualityProfile, disableAllQualityFilters, disableQualityFilter);
+        int result = Objects.hash(formattedQuery, q, fl, start, facetsMax, flimit, fsort, foffset, fprefix, fcontains, facetRangeStart, facetRangeEnd, facetRangeGap, pageSize, sort, dir, displayString, qc, facet, qualityProfile, disableAllQualityFilters, disableQualityFilter);
         result = 31 * result + Arrays.hashCode(fq);
         result = 31 * result + Arrays.hashCode(facets);
+        result = 31 * result + Arrays.hashCode(facetRanges);
         return result;
     }
 

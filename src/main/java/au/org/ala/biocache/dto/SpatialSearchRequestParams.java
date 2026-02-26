@@ -108,6 +108,18 @@ public class SpatialSearchRequestParams {
             "category, so it's a list of disabled category name)")
     protected List<String> disableQualityFilter = new ArrayList<>();
 
+    @Parameter(name="facetRanges", description = "Fields to perform range faceting on (maps to Solr facet.range)")
+    protected String[] facetRanges = new String[0];
+
+    @Parameter(name="facetRangeStart", description = "Global start value for all facet ranges (maps to Solr facet.range.start)")
+    protected String facetRangeStart = "";
+
+    @Parameter(name="facetRangeEnd", description = "Global end value for all facet ranges (maps to Solr facet.range.end)")
+    protected String facetRangeEnd = "";
+
+    @Parameter(name="facetRangeGap", description = "Global gap/interval for all facet ranges (maps to Solr facet.range.gap)")
+    protected String facetRangeGap = "";
+
     @Parameter(name="radius", description = "Radius for a spatial search")
     protected Float radius = null;
 

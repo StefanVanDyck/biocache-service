@@ -18,7 +18,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.solr.client.solrj.response.QueryResponse;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +67,11 @@ public class SearchResultDTO {
      * like &fq=-month:"11"&fq=-month:"12", current implementation in activeFacetMap can't handle this.
      */
     private Map<String, List<Facet>> activeFacetObj;
+    /**
+     * Stores field statistics (min, max, count, etc.) returned by Solr stats queries.
+     * Populated when the request includes stats=true&stats.field=fieldName parameters.
+     */
+    private Map<String, FieldStatsItem> fieldStats;
 
     /**
      * Constructor with 2 args
@@ -231,5 +235,19 @@ public class SearchResultDTO {
      */
     public void setActiveFacetObj(Map<String, List<Facet>> activeFacetObj) {
         this.activeFacetObj = activeFacetObj;
+    }
+
+    /**
+     * @return the fieldStats map (field name -> stats item)
+     */
+    public Map<String, FieldStatsItem> getFieldStats() {
+        return fieldStats;
+    }
+
+    /**
+     * @param fieldStats the fieldStats to set
+     */
+    public void setFieldStats(Map<String, FieldStatsItem> fieldStats) {
+        this.fieldStats = fieldStats;
     }
 }
