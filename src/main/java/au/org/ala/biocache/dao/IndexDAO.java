@@ -2,7 +2,7 @@ package au.org.ala.biocache.dao;
 
 import au.org.ala.biocache.dto.IndexFieldDTO;
 import au.org.ala.biocache.stream.ProcessInterface;
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.FieldStatsInfo;
 import org.apache.solr.client.solrj.response.QueryResponse;

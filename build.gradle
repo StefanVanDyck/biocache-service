@@ -78,6 +78,7 @@ dependencies {
     implementation "org.apache.httpcomponents:httpclient-cache:4.5.13"
     implementation "org.hibernate.validator:hibernate-validator:6.2.0.Final"
     implementation "org.apache.solr:solr-solrj:${solrVersion}"
+    implementation "org.apache.solr:solr-solrj-streaming:${solrVersion}"
 
     implementation "com.datastax.cassandra:cassandra-driver-core:${cassandraVersion}"
     implementation "com.datastax.cassandra:cassandra-driver-extras:${cassandraVersion}"

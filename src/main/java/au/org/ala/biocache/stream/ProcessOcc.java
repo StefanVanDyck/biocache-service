@@ -24,11 +24,11 @@ public class ProcessOcc implements ProcessInterface {
 
     public boolean process(Tuple tuple) {
         try {
-            if (tuple != null && tuple.fieldNames.size() > 0) {
+            if (tuple != null && tuple.getFieldNames().size() > 0) {
                 //need to set the original q to the processed value so that we remove the wkt etc that is added from paramcache object
                 Class resultClass = includeSensitive ? au.org.ala.biocache.dto.SensitiveOccurrenceIndex.class : OccurrenceIndex.class;
 
-                OccurrenceIndex oi = (OccurrenceIndex) (new ObjectMapper()).convertValue(tuple.getMap(), resultClass);
+                OccurrenceIndex oi = (OccurrenceIndex) (new ObjectMapper()).convertValue(tuple.getFields(), resultClass);
                 updateImageUrls(oi);
 
                 searchResult.getOccurrences().add(oi);

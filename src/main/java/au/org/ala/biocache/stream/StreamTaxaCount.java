@@ -54,7 +54,7 @@ public class StreamTaxaCount implements ProcessInterface {
 
             String name = null;
             Long count = 0L;
-            for (Object value : tuple.getMap().values()) {
+            for (Object value : tuple.getFields().values()) {
                 if (value instanceof String) {
                     name = (String) value;
                 } else {

@@ -21,7 +21,7 @@ public class ScatterplotSearch implements ProcessInterface {
     }
 
     public boolean process(Tuple tuple) {
-        if (tuple != null && tuple.fields != null && tuple.fields.size() >= 2) {
+        if (tuple != null && tuple.getFields() != null && tuple.getFields().size() >= 2) {
             try {
                 Double a = tuple.getDouble(y);
                 Double b = tuple.getDouble(x);

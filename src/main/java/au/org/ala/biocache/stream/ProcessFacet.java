@@ -54,7 +54,7 @@ public class ProcessFacet implements ProcessInterface {
         initField();
 
         try {
-            if (tuple != null && tuple.fieldNames.size() > 0) {
+            if (tuple != null && tuple.getFieldNames().size() > 0) {
                 long entryCount = tuple.getLong("count(*)");
 
                 if (entryCount > 0) {

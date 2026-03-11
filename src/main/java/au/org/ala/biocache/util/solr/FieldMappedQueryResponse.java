@@ -392,7 +392,7 @@ public class FieldMappedQueryResponse extends QueryResponse {
     @Override
     public <T> List<T> getBeans(Class<T> type) {
 
-        return this.solrClient == null ? (new DocumentObjectBinder()).getBeans(type, delegate.getResults()) : this.solrClient.getBinder().getBeans(type, delegate.getResults());
+        return (new DocumentObjectBinder()).getBeans(type, delegate.getResults());
     }
 
     @Override
@@ -448,14 +448,6 @@ public class FieldMappedQueryResponse extends QueryResponse {
     @Override
     public void setRequestUrl(String requestUrl) {
         delegate.setRequestUrl(requestUrl);
-    }
-
-    public static byte[] serializable(SolrResponse response) {
-        return SolrResponse.serializable(response);
-    }
-
-    public static SolrResponse deserialize(byte[] bytes) {
-        return SolrResponse.deserialize(bytes);
     }
 
     class WrappedRangeFacet<B, G> extends RangeFacet<B, G> {

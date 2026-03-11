@@ -1,9 +1,9 @@
 package au.org.ala.biocache.util.solr;
 
 import org.apache.solr.client.solrj.*;
-import org.apache.solr.client.solrj.beans.DocumentObjectBinder;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.SolrPingResponse;
+import org.apache.solr.client.solrj.response.StreamingResponseCallback;
 import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
@@ -30,6 +30,10 @@ public class FieldMappedSolrClient extends SolrClient {
 
     public boolean isInstanceOf(Class clazz) {
         return clazz.isAssignableFrom(delegate.getClass());
+    }
+
+    public SolrClient getDelegate() {
+        return delegate;
     }
 
     @Override
@@ -349,11 +353,6 @@ public class FieldMappedSolrClient extends SolrClient {
     @Override
     public NamedList<Object> request(SolrRequest solrRequest, String s) throws SolrServerException, IOException {
         return delegate.request(solrRequest, s);
-    }
-
-    @Override
-    public DocumentObjectBinder getBinder() {
-        return delegate.getBinder();
     }
 
     @Override

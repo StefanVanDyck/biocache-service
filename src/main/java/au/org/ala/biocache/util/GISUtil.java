@@ -1,6 +1,7 @@
 package au.org.ala.biocache.util;
 
-import org.apache.commons.math3.util.Precision;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import org.geotools.geometry.GeneralDirectPosition;
 import org.geotools.referencing.CRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
@@ -44,8 +45,8 @@ public class GISUtil {
             Double longitude = wgs84LatLong.getOrdinate(0);
             Double latitude = wgs84LatLong.getOrdinate(1);
 
-            Double roundedLongitude = Precision.round(longitude, decimalPlacesToRoundTo);
-            Double roundedLatitude = Precision.round(latitude, decimalPlacesToRoundTo);
+            Double roundedLongitude = BigDecimal.valueOf(longitude).setScale(decimalPlacesToRoundTo, RoundingMode.HALF_UP).doubleValue();
+            Double roundedLatitude = BigDecimal.valueOf(latitude).setScale(decimalPlacesToRoundTo, RoundingMode.HALF_UP).doubleValue();
 
             return new double[]{roundedLatitude, roundedLongitude};
         } catch (Exception e) {

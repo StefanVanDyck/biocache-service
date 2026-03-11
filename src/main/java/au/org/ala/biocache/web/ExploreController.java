@@ -20,7 +20,6 @@ import au.org.ala.biocache.dto.*;
 import au.org.ala.biocache.service.ListsService;
 import au.org.ala.biocache.service.ListsService.SpeciesListSearchDTO;
 import au.org.ala.biocache.util.QueryFormatUtils;
-import com.ctc.wstx.util.URLUtil;
 import io.swagger.annotations.ApiParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -104,7 +103,7 @@ public class ExploreController {
         String result = null;
         try {
             if (path.startsWith("http")) {
-                result = StreamUtils.copyToString(URLUtil.inputStreamFromURL(new URL(path)), CharacterSet.UTF_8.toCharset());
+                result = StreamUtils.copyToString(new URL(path).openStream(), CharacterSet.UTF_8.toCharset());
             } else {
                 result = FileUtils.readFileToString(new File(path), StandardCharsets.UTF_8);
             }

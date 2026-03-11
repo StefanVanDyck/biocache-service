@@ -6,7 +6,7 @@ import au.org.ala.biocache.stream.ProcessInterface;
 import au.org.ala.biocache.util.QueryFormatUtils;
 import au.org.ala.biocache.util.SolrUtils;
 import junit.framework.TestCase;
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.response.FieldStatsInfo;
 import org.apache.solr.client.solrj.response.QueryResponse;

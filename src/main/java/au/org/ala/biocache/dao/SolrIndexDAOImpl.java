@@ -14,16 +14,12 @@ import au.org.ala.biocache.util.solr.FieldMappingUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.cache.CacheConfig;
-import org.apache.http.impl.client.cache.CachingHttpClientBuilder;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.log4j.Logger;
 import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.RemoteSolrException;
 import org.apache.solr.client.solrj.impl.*;
 import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.io.Tuple;
@@ -37,7 +33,6 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
-import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.gbif.dwc.terms.DcTerm;
 import org.gbif.dwc.terms.DwcTerm;
 import org.gbif.dwc.terms.Term;
@@ -52,6 +47,8 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -196,7 +193,6 @@ public class SolrIndexDAOImpl implements IndexDAO {
 
     // CoreContainer cc;
     SolrClient solrClient;
-    CloseableHttpClient httpClient;
 
     // for SOLR streaming
     SolrClientCache solrClientCache;
@@ -208,85 +204,46 @@ public class SolrIndexDAOImpl implements IndexDAO {
 
             SolrClient solrClient = null;
 
-            PoolingHttpClientConnectionManager poolingConnectionPoolManager =
-                    new PoolingHttpClientConnectionManager();
-            poolingConnectionPoolManager.setMaxTotal(solrConnectionPoolSize);
-            poolingConnectionPoolManager.setDefaultMaxPerRoute(solrConnectionMaxPerRoute);
-
-            CacheConfig cacheConfig =
-                    CacheConfig.custom()
-                            .setMaxCacheEntries(solrConnectionCacheEntries)
-                            .setMaxObjectSize(solrConnectionCacheObjectSize)
-                            .setSharedCache(false)
-                            .build();
-            RequestConfig requestConfig =
-                    RequestConfig.custom()
-                            .setConnectTimeout(solrConnectionConnectTimeout)
-                            .setConnectionRequestTimeout(solrConnectionRequestTimeout)
-                            .setSocketTimeout(solrConnectionSocketTimeout)
-                            .build();
-            httpClient =
-                    CachingHttpClientBuilder.create()
-                            .setCacheConfig(cacheConfig)
-                            .setDefaultRequestConfig(requestConfig)
-                            .setConnectionManager(poolingConnectionPoolManager)
-                            .setMaxConnPerRoute(solrConnectionMaxPerRoute)
-                            .setUserAgent(userAgent)
-                            .useSystemProperties()
-                            .build();
-
             solrClientCache = new SolrClientCache();
 
-            if (usehttp2) {
-                // TODO - this is experimental. Requires more configuration params for tuning timeouts etc
+            if (usehttp2 || !solrHome.startsWith("http")) {
                 if (!solrHome.startsWith("http")) {
                     String[] zkHosts = solrHome.split(",");
                     List<String> hosts = new ArrayList<String>();
                     for (String zkHost : zkHosts) {
                         hosts.add(zkHost.trim());
                     }
-                    // HTTP2
-                    CloudHttp2SolrClient.Builder builder =
-                            new CloudHttp2SolrClient.Builder(hosts, Optional.empty());
-                    CloudHttp2SolrClient client = builder.build();
-                    client.setDefaultCollection(solrCollection);
-                    solrClient = client;
+                    // ZooKeeper-based SolrCloud
+                    CloudSolrClient.Builder builder =
+                            new CloudSolrClient.Builder(hosts, Optional.empty());
+                    builder.withDefaultCollection(solrCollection);
+                    builder.withZkConnectTimeout(solrConnectionConnectTimeout, TimeUnit.MILLISECONDS);
+                    builder.withZkClientTimeout(solrConnectionSocketTimeout, TimeUnit.MILLISECONDS);
+                    builder.withInternalClientBuilder(
+                            new HttpJdkSolrClient.Builder()
+                                    .withConnectionTimeout(solrConnectionConnectTimeout, TimeUnit.MILLISECONDS)
+                                    .withRequestTimeout(solrConnectionSocketTimeout, TimeUnit.MILLISECONDS));
+                    solrClient = builder.build();
+                    try {
+                        solrClient.ping();
+                    } catch (Exception e) {
+                        logger.error("ping failed", e);
+                    }
                 } else {
-                    Http2SolrClient.Builder builder = new Http2SolrClient.Builder(solrHome);
-                    builder.connectionTimeout(solrConnectionConnectTimeout);
-                    builder.maxConnectionsPerHost(solrConnectionMaxPerRoute);
+                    HttpJdkSolrClient.Builder builder = new HttpJdkSolrClient.Builder(solrHome);
+                    builder.withConnectionTimeout(solrConnectionConnectTimeout, TimeUnit.MILLISECONDS);
+                    builder.withRequestTimeout(solrConnectionSocketTimeout, TimeUnit.MILLISECONDS);
                     solrClient = builder.build();
                 }
             } else {
                 logger.info("Initialising the solr server " + solrHome);
 
-                if (!solrHome.startsWith("http://")) {
-                    if (solrHome.contains(":")) {
-                        // assume that it represents a SolrCloud using ZooKeeper
-                        CloudSolrClient cloudServer =
-                                new CloudSolrClient.Builder()
-                                        .withZkHost(solrHome)
-                                        .withHttpClient(httpClient)
-                                        .build();
-                        cloudServer.setDefaultCollection(solrCollection);
-                        solrClient = cloudServer;
-                        try {
-                            solrClient.ping();
-                        } catch (Exception e) {
-                            logger.error("ping failed", e);
-                        }
-                    } else {
-                        logger.error("Failed to initialise connection to SOLR server with solrHome: " + solrHome);
-                    }
-                } else {
-                    logger.info("Initialising connection to SOLR server..... with solrHome:  " + solrHome);
-                    solrClient =
-                            new ConcurrentUpdateSolrClient.Builder(solrHome)
-                                    .withThreadCount(solrUpdateThreads)
-                                    .withQueueSize(solrBatchSize)
-                                    .build();
-                    logger.info("Initialising connection to SOLR server - done.");
-                }
+                logger.info("Initialising connection to SOLR server..... with solrHome:  " + solrHome);
+                HttpJdkSolrClient.Builder builder = new HttpJdkSolrClient.Builder(solrHome);
+                builder.withConnectionTimeout(solrConnectionConnectTimeout, TimeUnit.MILLISECONDS);
+                builder.withRequestTimeout(solrConnectionSocketTimeout, TimeUnit.MILLISECONDS);
+                solrClient = builder.build();
+                logger.info("Initialising connection to SOLR server - done.");
             }
 
             if (solrClient != null) {
@@ -341,23 +298,26 @@ public class SolrIndexDAOImpl implements IndexDAO {
                 }
             } catch (SolrException e) {
                 // Fix zk disconnects, maybe
-                if (solrClient instanceof CloudSolrClient
+                if (solrClient instanceof FieldMappedSolrClient
+                        && ((FieldMappedSolrClient) solrClient).isInstanceOf(CloudSolrClient.class)
                         && e.getMessage().contains("Could not load collection")) {
                     logError(query, "query failed, attempting to reconnect: ", e.getMessage());
 
+                    CloudSolrClient cloudClient = (CloudSolrClient) ((FieldMappedSolrClient) solrClient).getDelegate();
+
                     // zk reconnect
                     try {
-                        ((CloudSolrClient) solrClient).getClusterStateProvider().close();
+                        cloudClient.getClusterStateProvider().close();
                     } catch (IOException io) {
                     }
-                    ((CloudSolrClient) solrClient).getClusterStateProvider().connect();
+                    cloudClient.getClusterStateProvider().connect();
 
                     // solr reconnect
                     try {
-                        solrClient.close();
-                    } catch (IOException io) {
+                        cloudClient.close();
+                    } catch (Exception io) {
                     }
-                    ((CloudSolrClient) solrClient).connect();
+                    cloudClient.connect();
 
                     if (retry < maxRetries) {
                         if (retryWait > 0) {
@@ -667,8 +627,7 @@ public class SolrIndexDAOImpl implements IndexDAO {
         return solrIndexVersion;
     }
 
-    private volatile Set<IndexFieldDTO> indexFields = new ConcurrentHashSet<
-            IndexFieldDTO>();
+    private volatile Set<IndexFieldDTO> indexFields = ConcurrentHashMap.newKeySet();
 
     private volatile Map<String, IndexFieldDTO> indexFieldMap =
             RestartDataService.get(
@@ -1163,7 +1122,7 @@ public class SolrIndexDAOImpl implements IndexDAO {
                 }
                 procFacet.flush();
             }
-        } catch (HttpSolrClient.RemoteSolrException e) {
+        } catch (RemoteSolrException e) {
             logError(query, "SolrException query failed", e.getMessage());
             throw e;
         } catch (IOException ioe) {

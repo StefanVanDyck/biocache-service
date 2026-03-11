@@ -14,7 +14,7 @@ import okio.Source;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest;
@@ -234,8 +234,8 @@ public class SolrUtils {
     }
 
     public static Long getRecordCount(String queryUrl) throws Exception {
-        CloudSolrClient solr = new CloudSolrClient.Builder(getZkHost(), Optional.empty()).build();
-        solr.setDefaultCollection(BIOCACHE_TEST_SOLR_COLLECTION);
+        CloudSolrClient solr = new CloudSolrClient.Builder(getZkHost(), Optional.empty())
+                .withDefaultCollection(BIOCACHE_TEST_SOLR_COLLECTION).build();
 
         SolrQuery params = new SolrQuery();
         params.setQuery(queryUrl);
@@ -249,8 +249,8 @@ public class SolrUtils {
     }
 
     public static SolrDocumentList getRecords(String queryUrl) throws Exception {
-        CloudSolrClient solr = new CloudSolrClient.Builder(getZkHost(), Optional.empty()).build();
-        solr.setDefaultCollection(BIOCACHE_TEST_SOLR_COLLECTION);
+        CloudSolrClient solr = new CloudSolrClient.Builder(getZkHost(), Optional.empty())
+                .withDefaultCollection(BIOCACHE_TEST_SOLR_COLLECTION).build();
 
         SolrQuery params = new SolrQuery();
         params.setQuery(queryUrl);

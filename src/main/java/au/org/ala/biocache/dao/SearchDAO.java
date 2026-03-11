@@ -18,7 +18,7 @@ import au.org.ala.biocache.dto.*;
 import au.org.ala.biocache.stream.ProcessInterface;
 import au.org.ala.biocache.util.LegendItem;
 import au.org.ala.biocache.util.QidMissingException;
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.request.SolrQuery;
 import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;

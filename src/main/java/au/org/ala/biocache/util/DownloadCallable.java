@@ -2,7 +2,7 @@ package au.org.ala.biocache.util;
 
 import au.org.ala.biocache.dao.IndexDAO;
 import au.org.ala.biocache.stream.ProcessDownload;
-import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.request.SolrQuery;
 
 import java.util.List;
 import java.util.concurrent.Callable;

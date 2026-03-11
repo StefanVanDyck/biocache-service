@@ -27,7 +27,7 @@ public class ChartFacet implements ProcessInterface {
     public boolean process(Tuple t) {
         long count = 0;
         String name = null;
-        for (Object o : t.getMap().values()) {
+        for (Object o : t.getFields().values()) {
             if (o instanceof Long) {
                 count = (Long) o;
             } else {

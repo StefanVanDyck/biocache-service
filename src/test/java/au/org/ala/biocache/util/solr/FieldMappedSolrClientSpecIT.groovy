@@ -2,7 +2,7 @@ package au.org.ala.biocache.util.solr
 
 import au.org.ala.biocache.dao.IndexDAO
 import au.org.ala.biocache.util.SolrUtils
-import org.apache.solr.client.solrj.SolrQuery
+import org.apache.solr.client.solrj.request.SolrQuery
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.junit.BeforeClass
 import org.springframework.beans.factory.annotation.Autowired

@@ -59,7 +59,7 @@ public class StreamAsCSV implements ProcessInterface {
                     responseHeader.add(fieldMappingUtil.translateFieldName(header.get(i)));
                 }
             } else {
-                header = new ArrayList<>(tuple.getMap().keySet());
+                header = new ArrayList<>(tuple.getFields().keySet());
             }
             csvWriter.writeNext(header.toArray(new String[0]));
             row = new String[header.size()];
