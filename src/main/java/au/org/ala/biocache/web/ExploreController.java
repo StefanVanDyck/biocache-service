@@ -242,16 +242,20 @@ public class ExploreController {
     List<SpeciesListDTO> speciesLists(@ParameterObject SpatialSearchRequestParams params) throws Exception {
 
         List<SpeciesListDTO> speciesListsRet = new ArrayList<>();
-        List<SpeciesListSearchDTO.SpeciesListDTO> speciesLists = listsService.getLists();
+        try {
+            List<SpeciesListSearchDTO.SpeciesListDTO> speciesLists = listsService.getLists();
 
-        for (SpeciesListSearchDTO.SpeciesListDTO speciesList : speciesLists) {
-            Integer[] counts = getSpeciesListCount(params, speciesList.dataResourceUid);
-            SpeciesListDTO sdto = new SpeciesListDTO();
-            sdto.setDrUid(speciesList.dataResourceUid);
-            sdto.setName(speciesList.listName);
-            sdto.setCount(counts[0]);
-            sdto.setSpeciesCount(counts[1]);
-            speciesListsRet.add(sdto);
+            for (SpeciesListSearchDTO.SpeciesListDTO speciesList : speciesLists) {
+                Integer[] counts = getSpeciesListCount(params, speciesList.dataResourceUid);
+                SpeciesListDTO sdto = new SpeciesListDTO();
+                sdto.setDrUid(speciesList.dataResourceUid);
+                sdto.setName(speciesList.listName);
+                sdto.setCount(counts[0]);
+                sdto.setSpeciesCount(counts[1]);
+                speciesListsRet.add(sdto);
+            }
+        }catch (Exception e) {
+            logger.error("Exception retrieving species lists and their counts", e);
         }
         return speciesListsRet;
     }

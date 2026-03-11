@@ -58,7 +58,7 @@ public class ListsService {
     private String speciesListUrl;
 
     private Map<String, Map<String, Set<String>>> data = RestartDataService.get(this, "data", new TypeReference<HashMap<String, Map<String, Set<String>>>>(){}, HashMap.class);
-    private Map<String, List<SpeciesListDTO>> generalPurposeLists = RestartDataService.get(this, GENERAL_PURPOSE_LISTS, new TypeReference<HashMap<String, List<SpeciesListDTO>>>(){}, HashMap.class);
+    private volatile Map<String, List<SpeciesListDTO>> generalPurposeLists = RestartDataService.get(this, GENERAL_PURPOSE_LISTS, new TypeReference<HashMap<String, List<SpeciesListDTO>>>(){}, HashMap.class);
 
     @PostConstruct
     private void init() {
@@ -83,36 +83,31 @@ public class ListsService {
 
         if (enabled && StringUtils.isNotBlank(speciesListUrl)) {
 
-            new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        HashMap map = new HashMap();
-                        HashMap generalSpeciesListsMap = new HashMap();
+            try {
+                HashMap map = new HashMap();
+                HashMap generalSpeciesListsMap = new HashMap();
 
-                        Map threatened = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isThreatened=eq:true&isAuthoritative=eq:true"), Map.class);
-                        Map invasive = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isInvasive=eq:true&isAuthoritative=eq:true"), Map.class);
-                        Map publicLists = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isAuthoritative=eq:true"), Map.class);
+                Map threatened = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isThreatened=eq:true&isAuthoritative=eq:true"), Map.class);
+                Map invasive = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isInvasive=eq:true&isAuthoritative=eq:true"), Map.class);
+                Map publicLists = restTemplate.getForObject(new URI(speciesListUrl + "/ws/speciesList/?isAuthoritative=eq:true"), Map.class);
 
-                        if ((threatened != null && threatened.size() > 0) ||
-                                (invasive != null && invasive.size() > 0)) {
-                            map.put("Conservation", getItemsMap(threatened, true));
-                            map.put("Invasive", getItemsMap(invasive, false));
+                if ((threatened != null && threatened.size() > 0) ||
+                    (invasive != null && invasive.size() > 0)) {
+                    map.put("Conservation", getItemsMap(threatened, true));
+                    map.put("Invasive", getItemsMap(invasive, false));
 
-                            data = map;
-                        }
-
-                        if((publicLists != null && publicLists.size() > 0)) {
-                            generalSpeciesListsMap.put(PUBLIC_LIST_TYPE, getPublicSpeciesLists(publicLists));
-
-                            generalPurposeLists = generalSpeciesListsMap;
-                        }
-                    } catch (Exception e) {
-                        logger.error("failed to get species lists for threatened or invasive species", e);
-                    }
-                    wait.countDown();
+                    data = map;
                 }
-            }.start();
+
+                if ((publicLists != null && publicLists.size() > 0)) {
+                    generalSpeciesListsMap.put(PUBLIC_LIST_TYPE, getPublicSpeciesLists(publicLists));
+
+                    generalPurposeLists = generalSpeciesListsMap;
+                }
+            } catch (Exception e) {
+                logger.error("failed to get species lists for threatened or invasive species", e);
+            }
+            wait.countDown();
         } else {
             wait.countDown();
         }
@@ -169,7 +164,7 @@ public class ListsService {
             logger.error("Error waiting for lists to be loaded", e);
         }
 
-        return generalPurposeLists.get(PUBLIC_LIST_TYPE);
+        return generalPurposeLists == null ? Collections.emptyList() : generalPurposeLists.getOrDefault(PUBLIC_LIST_TYPE, Collections.emptyList());
     }
 
     @Cacheable("speciesListItems")
