@@ -42,8 +42,8 @@ repositories {
     }
 }
 
-group = "au.org.ala"
-version = "3.7.0-SNAPSHOT"
+group = 'au.org.ala'
+version = '3.9.0-SNAPSHOT'
 
 boolean inplace = false
 
@@ -135,6 +135,10 @@ dependencies {
     implementation "com.google.code.findbugs:jsr305:3.0.2"
     implementation "org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}"
 
+    implementation "com.datastax.cassandra:cassandra-driver-core:${cassandraVersion}"
+    implementation "com.datastax.cassandra:cassandra-driver-extras:${cassandraVersion}"
+    implementation "software.aws.mcs:aws-sigv4-auth-cassandra-java-driver-plugin_3:3.0.3"
+
     if (inplace) {
         implementation project(":ala-ws-spring-security")
         implementation project(":ala-ws-security")
@@ -190,11 +194,18 @@ test {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
     }
+    jvmArgs += [
+        '--add-opens', 'java.base/java.io=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.math=ALL-UNNAMED',
+        '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.nio.file=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED'
+    ]
 }
 
 bootWar {
     enabled = true
-    archiveName "biocache-service-${version}-exec.war"
+    classifier = 'exec'
 }
 
 war {
@@ -239,6 +250,9 @@ processResources {
                 ]
         )
     }
+    filesMatching('application.properties') {
+        expand(version: project.version)
+    }
 }
 
 dockerCompose {
@@ -275,9 +289,7 @@ publishing {
     }
     publications {
         mavenJava(MavenPublication) {
-//            from components.java
-//            artifact sourcesJar
-//            artifact javadocJar
+            artifact bootWar
 
             pom {
                 name = "Biocache Service"
