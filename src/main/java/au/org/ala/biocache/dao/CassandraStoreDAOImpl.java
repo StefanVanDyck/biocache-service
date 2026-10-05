@@ -58,6 +58,12 @@ public class CassandraStoreDAOImpl implements StoreDAO {
     @Value("${cassandra.port:9042}")
     Integer port;
 
+    @Value("${cassandra.connect.timeout.ms:5000}")
+    Integer connectTimeoutMs;
+
+    @Value("${cassandra.read.timeout.ms:5000}")
+    Integer readTimeoutMs;
+
     @Value("${cassandra.keyspace:biocache}")
     String keyspace;
 
@@ -85,6 +91,13 @@ public class CassandraStoreDAOImpl implements StoreDAO {
         Cluster.Builder builder =
                 Cluster.builder()
                         .withoutJMXReporting() // Workaround for conflict with SOLR 8
+                        // Bound every request well below the 30s CloudFront origin timeout:
+                        // QidCacheDAOImpl.save() already swallows persistence failures and
+                        // falls back to the in-memory QID, so fail fast instead of hanging.
+                        .withSocketOptions(
+                                new SocketOptions()
+                                        .setConnectTimeoutMillis(connectTimeoutMs)
+                                        .setReadTimeoutMillis(readTimeoutMs))
                         .withReconnectionPolicy(new ExponentialReconnectionPolicy(10000, 60000))
                         .withRetryPolicy(DefaultRetryPolicy.INSTANCE)
                         .withCodecRegistry(
