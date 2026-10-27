@@ -5,15 +5,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * Unit tests for parameter validation in SearchDAOImpl (capFlimit, capPageSize).
@@ -61,41 +57,24 @@ public class SearchDAOImplTest {
     }
 
     @Test
-    public void testCapFlimit_exceedsLimit_throws400() throws Exception {
+    public void testCapFlimit_exceedsLimit_cappedToLimit() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "flimitMax", 1000);
-        try {
-            capFlimitMethod.invoke(searchDAO, 1001);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-            assertEquals("Requested flimit=1001 exceeds the maximum allowed value of 1000", rse.getReason());
-        }
+        int result = (int) capFlimitMethod.invoke(searchDAO, 1001);
+        assertEquals(1000, result);
     }
 
     @Test
-    public void testCapFlimit_negativeOne_throws400() throws Exception {
+    public void testCapFlimit_negativeOne_cappedToLimit() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "flimitMax", 1000);
-        try {
-            capFlimitMethod.invoke(searchDAO, -1);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-            assertEquals("Requested flimit=-1 exceeds the maximum allowed value of 1000", rse.getReason());
-        }
+        int result = (int) capFlimitMethod.invoke(searchDAO, -1);
+        assertEquals(1000, result);
     }
 
     @Test
-    public void testCapFlimit_veryLargeValue_throws400() throws Exception {
+    public void testCapFlimit_veryLargeValue_cappedToLimit() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "flimitMax", 1000);
-        try {
-            capFlimitMethod.invoke(searchDAO, Integer.MAX_VALUE);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-        }
+        int result = (int) capFlimitMethod.invoke(searchDAO, Integer.MAX_VALUE);
+        assertEquals(1000, result);
     }
 
     @Test
@@ -143,41 +122,24 @@ public class SearchDAOImplTest {
     }
 
     @Test
-    public void testCapPageSize_exceedsLimit_throws400() throws Exception {
+    public void testCapPageSize_exceedsLimit_cappedToLimit() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "pageSizeMax", 1000);
-        try {
-            capPageSizeMethod.invoke(searchDAO, 1001);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-            assertEquals("Requested pageSize=1001 exceeds the maximum allowed value of 1000", rse.getReason());
-        }
+        int result = (int) capPageSizeMethod.invoke(searchDAO, 1001);
+        assertEquals(1000, result);
     }
 
     @Test
-    public void testCapPageSize_negativeOne_throws400() throws Exception {
+    public void testCapPageSize_negativeOne_cappedToLimit() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "pageSizeMax", 1000);
-        try {
-            capPageSizeMethod.invoke(searchDAO, -1);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-            assertEquals("Requested pageSize=-1 exceeds the maximum allowed value of 1000", rse.getReason());
-        }
+        int result = (int) capPageSizeMethod.invoke(searchDAO, -1);
+        assertEquals(1000, result);
     }
 
     @Test
-    public void testCapPageSize_veryLargeValue_throws400() throws Exception {
+    public void testCapPageSize_veryLargeValue_cappedToLimit() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "pageSizeMax", 1000);
-        try {
-            capPageSizeMethod.invoke(searchDAO, Integer.MAX_VALUE);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-        }
+        int result = (int) capPageSizeMethod.invoke(searchDAO, Integer.MAX_VALUE);
+        assertEquals(1000, result);
     }
 
     @Test
@@ -211,15 +173,10 @@ public class SearchDAOImplTest {
     }
 
     @Test
-    public void testCapFlimit_maxZero_rejectsPositive() throws Exception {
+    public void testCapFlimit_maxZero_capsPositive() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "flimitMax", 0);
-        try {
-            capFlimitMethod.invoke(searchDAO, 1);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-        }
+        int result = (int) capFlimitMethod.invoke(searchDAO, 1);
+        assertEquals(0, result);
     }
 
     @Test
@@ -230,14 +187,9 @@ public class SearchDAOImplTest {
     }
 
     @Test
-    public void testCapPageSize_maxZero_rejectsPositive() throws Exception {
+    public void testCapPageSize_maxZero_capsPositive() throws Exception {
         ReflectionTestUtils.setField(searchDAO, "pageSizeMax", 0);
-        try {
-            capPageSizeMethod.invoke(searchDAO, 1);
-            fail("Expected ResponseStatusException");
-        } catch (InvocationTargetException e) {
-            ResponseStatusException rse = (ResponseStatusException) e.getCause();
-            assertEquals(HttpStatus.BAD_REQUEST, rse.getStatus());
-        }
+        int result = (int) capPageSizeMethod.invoke(searchDAO, 1);
+        assertEquals(0, result);
     }
 }
