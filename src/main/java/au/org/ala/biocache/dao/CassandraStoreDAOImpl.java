@@ -208,6 +208,11 @@ public class CassandraStoreDAOImpl implements StoreDAO {
 
     @Override
     public <T> void put(String key, T data) throws IOException {
+        put(key, data, null);
+    }
+
+    @Override
+    public <T> void put(String key, T data, Integer ttlSeconds) throws IOException {
         JsonConfig jsonConfig = new JsonConfig();
         // don't save null fields
         jsonConfig.setJsonPropertyFilter((Object source, String name, Object val) -> val == null);
@@ -221,7 +226,17 @@ public class CassandraStoreDAOImpl implements StoreDAO {
 
         String className = data.getClass().getSimpleName();
         try {
-            BoundStatement boundStatement = createPutStatement(key, className, value);
+            BoundStatement boundStatement;
+            if (ttlSeconds != null) {
+                PreparedStatement statement =
+                        getPreparedStmt(
+                                "INSERT INTO " + className + " (key,value) VALUES (?,?) USING TTL ?;",
+                                className);
+                statement.setIdempotent(true);
+                boundStatement = statement.bind(key, value, ttlSeconds);
+            } else {
+                boundStatement = createPutStatement(key, className, value);
+            }
             session.execute(boundStatement);
         } catch (Exception e) {
             logger.error(
